@@ -204,6 +204,7 @@ section h2:first-child { margin-top: 0; }
 /* hero da home */
 .hero { text-align: center; padding: 44px 24px; }
 .hero .logo-hero { width: 72px; height: 72px; margin-bottom: 6px; }
+.hero .logo-hero.lockup { width: min(300px, 78%); height: auto; border-radius: 18px; box-shadow: var(--shadow-lg); }
 .hero h1 { font-size: 2rem; font-weight: 500; }
 .hero p { max-width: 520px; margin: 0 auto 10px; font-size: 1.05rem; }
 .hero nav { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
