@@ -278,3 +278,70 @@ function salvarSessaoLocal(usuario) {
         if (usuario.telefone) localStorage.setItem('telefone', usuario.telefone);
     } catch (e) { /* modo privado/cota cheia: segue sem salvar */ }
 }
+
+// ==========================================
+// SERVIÇOS DO PRESTADOR (/servicos)
+// ==========================================
+
+async function listarServicos() {
+    try {
+        const response = await fetch(`${API_URL}/servicos`);
+        const result = await response.json();
+        if (response.ok) return { sucesso: true, dados: result.servicos };
+        return { sucesso: false, erro: result.erro };
+    } catch (error) {
+        return { sucesso: false, erro: error.message };
+    }
+}
+
+async function meusServicos() {
+    try {
+        const response = await fetch(`${API_URL}/servicos/meus`);
+        const result = await response.json();
+        if (response.ok) return { sucesso: true, dados: result.servicos };
+        return { sucesso: false, erro: result.erro, naoAutenticado: response.status === 401 };
+    } catch (error) {
+        return { sucesso: false, erro: error.message };
+    }
+}
+
+async function criarServico(dados) {
+    try {
+        const response = await fetch(`${API_URL}/servicos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+        });
+        const result = await response.json();
+        if (response.ok) return { sucesso: true, dados: result };
+        return { sucesso: false, erro: result.erro, naoAutenticado: response.status === 401 };
+    } catch (error) {
+        return { sucesso: false, erro: error.message };
+    }
+}
+
+async function atualizarServico(id, dados) {
+    try {
+        const response = await fetch(`${API_URL}/servicos/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+        });
+        const result = await response.json();
+        if (response.ok) return { sucesso: true, dados: result };
+        return { sucesso: false, erro: result.erro, naoAutenticado: response.status === 401 };
+    } catch (error) {
+        return { sucesso: false, erro: error.message };
+    }
+}
+
+async function deletarServico(id) {
+    try {
+        const response = await fetch(`${API_URL}/servicos/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (response.ok) return { sucesso: true, dados: result };
+        return { sucesso: false, erro: result.erro, naoAutenticado: response.status === 401 };
+    } catch (error) {
+        return { sucesso: false, erro: error.message };
+    }
+}

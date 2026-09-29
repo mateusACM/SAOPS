@@ -64,6 +64,18 @@ const tabelaSessoes = `
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE)
 `;
 
+const tabelaServicos = `
+    CREATE TABLE IF NOT EXISTS servicos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER NOT NULL,
+        nome TEXT NOT NULL,
+        descricao TEXT,
+        preco REAL,
+        duracao_min INTEGER,
+        criado_em TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE)
+`;
+
 db.serialize(() => {
     db.run(tabelas, (err) => {
         if (err) console.error(' Erro ao criar tabela:', err.message);
@@ -84,6 +96,10 @@ db.serialize(() => {
             // Limpa sessões expiradas
             db.run("DELETE FROM sessoes WHERE expira_em < datetime('now')");
         }
+    });
+    db.run(tabelaServicos, (err) => {
+        if (err) console.error(' Erro ao criar tabela:', err.message);
+        else console.log(' Tabela "servicos" pronta!');
     });
     // Impede double-booking mesmo em escritas concorrentes (vale para
     // bancos já existentes; se houver duplicatas antigas, só avisa)

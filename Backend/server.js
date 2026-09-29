@@ -564,11 +564,104 @@ app.put('/tarefas/:id', exigirLogin, (req, res) => {
 });
 
 // DELETAR tarefa
-app.delete('/tarefas/:id', exigirLogin, (req, res) => {
+app.delete('/tarefas/:id', (req, res) => {
     db.run('DELETE FROM tarefas WHERE id = ?', [req.params.id], function (err) {
         if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
         if (this.changes === 0) return res.status(404).json({ erro: 'Tarefa não encontrada' });
         res.json({ mensagem: ' Tarefa excluída com sucesso!', id_deletado: req.params.id });
+    });
+});
+
+
+// ========================================
+// SERVIÇOS DO PRESTADOR
+// ========================================
+
+function validarServico({ nome, descricao, preco, duracao_min }) {
+    if (!nome || !String(nome).trim()) return 'Campo obrigatório: nome';
+    if (String(nome).trim().length > 120) return 'Nome muito longo (máx. 120 caracteres)';
+    if (descricao && String(descricao).length > 500) return 'Descrição muito longa (máx. 500 caracteres)';
+    if (preco !== undefined && preco !== null && preco !== '') {
+        const p = Number(preco);
+        if (!Number.isFinite(p) || p < 0) return 'Preço inválido (deve ser um número ≥ 0)';
+    }
+    if (duracao_min !== undefined && duracao_min !== null && duracao_min !== '') {
+        const d = Number(duracao_min);
+        if (!Number.isInteger(d) || d <= 0) return 'Duração inválida (minutos inteiros > 0)';
+    }
+    return null;
+}
+
+function normalizarServico({ nome, descricao, preco, duracao_min }) {
+    const nuloSeVazio = (v) => (v === undefined || v === null || v === '' ? null : v);
+    return {
+        nome: String(nome).trim(),
+        descricao: descricao ? String(descricao).trim() : null,
+        preco: nuloSeVazio(preco) === null ? null : Number(preco),
+        duracao_min: nuloSeVazio(duracao_min) === null ? null : Number(duracao_min)
+    };
+}
+
+// LISTAR todos (público — vitrine)
+app.get('/servicos', (req, res) => {
+    db.all(
+        'SELECT s.*, u.nome AS prestador FROM servicos s JOIN usuarios u ON u.id = s.usuario_id ORDER BY s.nome',
+        (err, rows) => {
+            if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+            res.json({ mensagem: ' Lista de serviços', total: rows.length, servicos: rows });
+        }
+    );
+});
+
+// LISTAR os meus (dono logado)
+app.get('/servicos/meus', exigirLogin, (req, res) => {
+    db.all('SELECT * FROM servicos WHERE usuario_id = ? ORDER BY nome', [req.usuario.id], (err, rows) => {
+        if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+        res.json({ mensagem: ' Meus serviços', total: rows.length, servicos: rows });
+    });
+});
+
+// CRIAR (dono = usuário logado)
+app.post('/servicos', exigirLogin, (req, res) => {
+    const erro = validarServico(req.body || {});
+    if (erro) return res.status(400).json({ erro });
+    const n = normalizarServico(req.body);
+    db.run(
+        'INSERT INTO servicos (usuario_id, nome, descricao, preco, duracao_min) VALUES (?, ?, ?, ?, ?)',
+        [req.usuario.id, n.nome, n.descricao, n.preco, n.duracao_min],
+        function (err) {
+            if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+            res.status(201).json({
+                mensagem: ' Serviço criado com sucesso!',
+                id: this.lastID,
+                detalhes: { id: this.lastID, ...n }
+            });
+        }
+    );
+});
+
+// ATUALIZAR (só o dono; de outro dono dá 404 para não revelar existência)
+app.put('/servicos/:id', exigirLogin, (req, res) => {
+    const erro = validarServico(req.body || {});
+    if (erro) return res.status(400).json({ erro });
+    const n = normalizarServico(req.body);
+    db.run(
+        'UPDATE servicos SET nome = ?, descricao = ?, preco = ?, duracao_min = ? WHERE id = ? AND usuario_id = ?',
+        [n.nome, n.descricao, n.preco, n.duracao_min, req.params.id, req.usuario.id],
+        function (err) {
+            if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+            if (this.changes === 0) return res.status(404).json({ erro: 'Serviço não encontrado' });
+            res.json({ mensagem: ' Serviço atualizado com sucesso!', detalhes: { id: Number(req.params.id), ...n } });
+        }
+    );
+});
+
+// DELETAR (só o dono)
+app.delete('/servicos/:id', exigirLogin, (req, res) => {
+    db.run('DELETE FROM servicos WHERE id = ? AND usuario_id = ?', [req.params.id, req.usuario.id], function (err) {
+        if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+        if (this.changes === 0) return res.status(404).json({ erro: 'Serviço não encontrado' });
+        res.json({ mensagem: ' Serviço excluído com sucesso!', id_deletado: req.params.id });
     });
 });
 
@@ -598,6 +691,11 @@ app.use('/agendamentos', (req, res) => {
 });
 
 app.use('/tarefas', (req, res) => {
+    res.status(404).json({ erro: 'Rota não encontrada' });
+});
+
+// 404 JSON para rotas de serviços desconhecidas
+app.use('/servicos', (req, res) => {
     res.status(404).json({ erro: 'Rota não encontrada' });
 });
 

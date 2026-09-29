@@ -43,68 +43,28 @@
   <main>
 
     <section>
-      <ul>
-        <li>
-          <form action="#" method="post">
-            <label for="txt_nome_servico_1">Nome do serviço</label>
-            <input type="text" id="txt_nome_servico_1" name="nome-servico-1" value="Corte de cabelo">
-
-            <label for="txt_duracao_servico_1">Duração (minutos)</label>
-            <input type="number" id="txt_duracao_servico_1" name="duracao-servico-1" value="40">
-
-            <label for="txt_preco_servico_1">Preço (R$)</label>
-            <input type="number" id="txt_preco_servico_1" name="preco-servico-1" value="45">
-
-            <button type="submit" id="btn_salvar_servico_1">Salvar</button>
-            <button type="button" id="btn_remover_servico_1">Remover</button>
-          </form>
-        </li>
-        <li>
-          <form action="#" method="post">
-            <label for="txt_nome_servico_2">Nome do serviço</label>
-            <input type="text" id="txt_nome_servico_2" name="nome-servico-2" value="Barba">
-
-            <label for="txt_duracao_servico_2">Duração (minutos)</label>
-            <input type="number" id="txt_duracao_servico_2" name="duracao-servico-2" value="25">
-
-            <label for="txt_preco_servico_2">Preço (R$)</label>
-            <input type="number" id="txt_preco_servico_2" name="preco-servico-2" value="30">
-
-            <button type="submit" id="btn_salvar_servico_2">Salvar</button>
-            <button type="button" id="btn_remover_servico_2">Remover</button>
-          </form>
-        </li>
-        <li>
-          <form action="#" method="post">
-            <label for="txt_nome_servico_3">Nome do serviço</label>
-            <input type="text" id="txt_nome_servico_3" name="nome-servico-3" value="Corte + barba">
-
-            <label for="txt_duracao_servico_3">Duração (minutos)</label>
-            <input type="number" id="txt_duracao_servico_3" name="duracao-servico-3" value="60">
-
-            <label for="txt_preco_servico_3">Preço (R$)</label>
-            <input type="number" id="txt_preco_servico_3" name="preco-servico-3" value="65">
-
-            <button type="submit" id="btn_salvar_servico_3">Salvar</button>
-            <button type="button" id="btn_remover_servico_3">Remover</button>
-          </form>
-        </li>
-      </ul>
+      <h2>Meus serviços</h2>
+      <p id="status_servicos">Carregando...</p>
+      <ul id="lista_servicos"></ul>
     </section>
 
     <section>
-      <h2>Adicionar novo serviço</h2>
-      <form action="#" method="post">
-        <label for="txt_nome_novo_servico">Nome do serviço</label>
-        <input type="text" id="txt_nome_novo_servico" name="nome-servico" placeholder="Ex: Coloração" required>
+      <h2 id="titulo_form_servico">Adicionar novo serviço</h2>
+      <form id="form_servico" action="#" method="post">
+        <label for="txt_nome_servico">Nome do serviço</label>
+        <input type="text" id="txt_nome_servico" name="nome" placeholder="Ex: Coloração" required maxlength="120">
 
-        <label for="txt_duracao_novo_servico">Duração (minutos)</label>
-        <input type="number" id="txt_duracao_novo_servico" name="duracao" placeholder="30" required>
+        <label for="txt_desc_servico">Descrição (opcional)</label>
+        <textarea id="txt_desc_servico" name="descricao" rows="2" maxlength="500" placeholder="Ex: Com hidratação inclusa"></textarea>
 
-        <label for="txt_preco_novo_servico">Preço (R$)</label>
-        <input type="number" id="txt_preco_novo_servico" name="preco" placeholder="50" required>
+        <label for="txt_duracao_servico">Duração (minutos)</label>
+        <input type="number" id="txt_duracao_servico" name="duracao_min" placeholder="30" min="1" step="1">
 
-        <button type="submit" id="btn_adicionar_servico">Adicionar serviço</button>
+        <label for="txt_preco_servico">Preço (R$)</label>
+        <input type="number" id="txt_preco_servico" name="preco" placeholder="50" min="0" step="0.01">
+
+        <button type="submit" id="btn_salvar_servico">Adicionar serviço</button>
+        <button type="button" id="btn_cancelar_edicao" class="secundario" hidden>Cancelar edição</button>
       </form>
     </section>
 
@@ -112,6 +72,117 @@
 
 <script src="../js/toast.js"></script>
 <script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script>
+  const lista = document.getElementById('lista_servicos');
+  const status = document.getElementById('status_servicos');
+  const form = document.getElementById('form_servico');
+  const tituloForm = document.getElementById('titulo_form_servico');
+  const btnSalvar = document.getElementById('btn_salvar_servico');
+  const btnCancelarEd = document.getElementById('btn_cancelar_edicao');
+  const campoNome = document.getElementById('txt_nome_servico');
+  const campoDesc = document.getElementById('txt_desc_servico');
+  const campoDuracao = document.getElementById('txt_duracao_servico');
+  const campoPreco = document.getElementById('txt_preco_servico');
+  let editandoId = null;
+
+  const formatarPreco = (p) => (p === null || p === undefined || p === '')
+    ? 'Preço a combinar'
+    : 'R$ ' + Number(p).toFixed(2).replace('.', ',');
+
+  function renderizar(servicos) {
+    lista.innerHTML = '';
+    if (!servicos.length) {
+      status.textContent = '';
+      lista.innerHTML = '<div class="vazio"><span class="vazio-ico">\u2702\uFE0F</span>Nenhum serviço cadastrado. Adicione o primeiro abaixo!</div>';
+      return;
+    }
+    status.textContent = servicos.length + ' serviço(s) cadastrado(s).';
+    servicos.forEach((serv) => {
+      const li = document.createElement('li');
+      const partes = [];
+      if (serv.duracao_min) partes.push(esc(serv.duracao_min) + ' min');
+      partes.push(formatarPreco(serv.preco));
+      li.innerHTML = '<div><p>' + esc(serv.nome) + '</p>' +
+        (serv.descricao ? '<p class="t-meta">' + esc(serv.descricao) + '</p>' : '') +
+        '<p class="t-meta">' + partes.join(' · ') + '</p></div>';
+      const acoes = document.createElement('div');
+      acoes.className = 't-acoes';
+      const btnEd = document.createElement('button');
+      btnEd.type = 'button';
+      btnEd.className = 'mini secundario';
+      btnEd.textContent = 'Editar';
+      btnEd.onclick = () => {
+        editandoId = serv.id;
+        campoNome.value = serv.nome || '';
+        campoDesc.value = serv.descricao || '';
+        campoDuracao.value = serv.duracao_min || '';
+        campoPreco.value = (serv.preco === null || serv.preco === undefined) ? '' : serv.preco;
+        tituloForm.textContent = 'Editar serviço';
+        btnSalvar.textContent = 'Salvar alterações';
+        btnCancelarEd.hidden = false;
+        campoNome.focus();
+      };
+      const btnDel = document.createElement('button');
+      btnDel.type = 'button';
+      btnDel.className = 'mini perigo';
+      btnDel.textContent = 'Remover';
+      btnDel.onclick = async () => {
+        if (!confirm('Remover "' + serv.nome + '"?')) return;
+        const r = await deletarServico(serv.id);
+        if (r.naoAutenticado) { exigirLogin('login-empresa.html'); return; }
+        if (r.sucesso) { toast('Serviço removido.', 'info'); carregar(); }
+        else toast('Erro: ' + r.erro, 'erro');
+      };
+      acoes.append(btnEd, btnDel);
+      li.appendChild(acoes);
+      lista.appendChild(li);
+    });
+  }
+
+  async function carregar() {
+    if (!(await exigirLogin('login-empresa.html'))) return;
+    status.textContent = '';
+    lista.innerHTML = esqueleto(3);
+    const r = await meusServicos();
+    if (r.naoAutenticado) { exigirLogin('login-empresa.html'); return; }
+    if (!r.sucesso) {
+      lista.innerHTML = '<div class="vazio">Erro: ' + esc(r.erro) + ' — o backend está rodando?</div>';
+      return;
+    }
+    renderizar(r.dados);
+  }
+
+  function limparForm() {
+    editandoId = null;
+    form.reset();
+    tituloForm.textContent = 'Adicionar novo serviço';
+    btnSalvar.textContent = 'Adicionar serviço';
+    btnCancelarEd.hidden = true;
+  }
+
+  btnCancelarEd.onclick = limparForm;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!(await exigirLogin('login-empresa.html'))) return;
+    const dados = {
+      nome: campoNome.value.trim(),
+      descricao: campoDesc.value.trim(),
+      duracao_min: campoDuracao.value === '' ? null : Number(campoDuracao.value),
+      preco: campoPreco.value === '' ? null : Number(campoPreco.value)
+    };
+    if (!dados.nome) { toast('Dê um nome ao serviço.', 'erro'); return; }
+    const r = editandoId ? await atualizarServico(editandoId, dados) : await criarServico(dados);
+    if (r.naoAutenticado) { exigirLogin('login-empresa.html'); return; }
+    if (!r.sucesso) { toast('Erro: ' + r.erro, 'erro'); return; }
+    toast(editandoId ? 'Serviço atualizado!' : 'Serviço adicionado!', 'sucesso');
+    limparForm();
+    carregar();
+  });
+
+  carregar();
+</script>
 <script src="../js/tema.js"></script>
 </body>
 </html>
