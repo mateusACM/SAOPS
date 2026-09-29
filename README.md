@@ -8,7 +8,7 @@
 [![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Deploy](https://img.shields.io/badge/Render-live-46E3B7?logo=render&logoColor=white)](https://saops.onrender.com/)
-[![Licença](https://img.shields.io/badge/Licen%C3%A7a-ISC-blue)](LICENSE)
+[![Licença](https://img.shields.io/badge/Licen%C3%A7a-MIT-green)](LICENSE)
 [![PRs](https://img.shields.io/badge/PRs-bem--vindos-brightgreen)](https://github.com/nicolaskmazzini-coder/SAOPS/pulls)
 
 [🌐 Demonstração ao vivo](https://saops.onrender.com/) · [📖 Diagramas](DIAGRAMAS.md) · [🐛 Issues](https://github.com/nicolaskmazzini-coder/SAOPS/issues)
@@ -176,4 +176,4 @@ Trabalho de Conclusão de Curso (TCC).
 
 ## 📄 Licença
 
-ISC — use à vontade, mantendo os créditos. 🤝
+MIT — use à vontade, mantendo os créditos. 🤝
