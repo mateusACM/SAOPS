@@ -210,11 +210,11 @@ stateDiagram-v2
 
 ```mermaid
 flowchart LR
-    DEV[git push main] --> GH[(GitHub<br/>nicolaskmazzini-coder/SAOPS)]
-    GH --> R[Render Blueprint<br/>render.yaml]
-    R --> B[build: npm install<br/>--prefix Backend]
-    B --> S[start: npm start<br/>--prefix Backend]
-    S --> P[https://saops.onrender.com]
+    DEV["git push main"] --> GH[("GitHub nicolaskmazzini-coder/SAOPS")]
+    GH --> R["Render Blueprint render.yaml"]
+    R --> B["build: npm install --prefix Backend"]
+    B --> S["start: npm start --prefix Backend"]
+    S --> P["https://saops.onrender.com"]
 ```
 
 ---
