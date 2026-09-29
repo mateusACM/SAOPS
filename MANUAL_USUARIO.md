@@ -1,138 +1,118 @@
-#  MANUAL DO USUÁRIO - Sistema de Agendamento
+# 📖 MANUAL DO USUÁRIO - SAOPS
 
 ## Objetivo
 
-Este manual descreve como usar o Sistema de Agendamento para gerenciar agendamentos de serviços de forma simples e eficiente.
+Este manual ensina a usar o **SAOPS** (https://saops.onrender.com/): marcar horários em barbearias, salões e clínicas, organizar tarefas e gerenciar seu negócio.
 
 ---
 
 ## ÍNDICE
 
-1. [Instalação e Execução](#instalação-e-execução)
-2. [Como Criar um Agendamento](#como-criar-um-agendamento)
-3. [Como Listar Agendamentos](#como-listar-agendamentos)
-4. [Como Editar um Agendamento](#como-editar-um-agendamento)
-5. [Como Deletar um Agendamento](#como-deletar-um-agendamento)
-6. [Validações Importantes](#validações-importantes)
-7. [Resolução de Problemas](#resolução-de-problemas)
+1. [Criando sua conta](#1-criando-sua-conta)
+2. [Entrando (login)](#2-entrando-login)
+3. [Marcando um horário](#3-marcando-um-horário)
+4. [Vendo seus horários (calendário)](#4-vendo-seus-horários-calendário)
+5. [Cancelando ou reagendando](#5-cancelando-ou-reagendando)
+6. [Organizando tarefas](#6-organizando-tarefas)
+7. [Recebendo lembretes](#7-recebendo-lembretes)
+8. [Sou prestador: agenda e serviços](#8-sou-prestador-agenda-e-serviços)
+9. [Tema claro/escuro](#9-tema-claroescuro)
+10. [Problemas comuns](#10-problemas-comuns)
 
 ---
 
-## Instalação e Execução
+## 1. Criando sua conta
 
-### Pré-requisitos
-- Node.js (v18 ou superior)
-- Git (para clonar o repositório)
+> **É preciso ter conta para marcar horários, criar tarefas e gerenciar serviços.** Ver a vitrine e o calendário é livre.
 
-### Passos de Instalação
-
-1. **Clonar o repositório**
-```bash
-git clone https://github.com/mateusACM/sistema-agendamento-tcc.git
-cd sistema-agendamento-tcc
-```
-
-2. **Instalar dependências**
-```bash
-npm install
-```
-
-3. **Rodar o servidor**
-```bash
-node server.js
-```
-
-Você deve ver:
-```
-✅ Conectado ao banco de dados SQLite
-✅ Tabela "agendamentos" pronta!
-🚀 Servidor rodando em http://localhost:3000
-```
+1. Abra a página inicial e clique em **Marcar horário** (cliente) ou **Sou prestador** (negócio)
+2. Escolha **Ainda não tenho conta** e preencha nome, e-mail e senha (**mínimo 8 caracteres**)
+3. Ou entre direto com **Google** ou **Microsoft** (sem senha)
+4. Pronto — você volta automaticamente pra onde estava
 
 ---
 
-##  Como Criar um Agendamento
+## 2. Entrando (login)
 
-### Informações Necessárias
-
-| Campo | Obrigatório | Formato | Exemplo |
-|-------|------------|---------|---------|
-| Nome do Cliente | ✅ Sim | Texto | João Silva |
-| Serviço | ✅ Sim | Texto | Corte de Cabelo |
-| Data | ✅ Sim | YYYY-MM-DD | 2024-04-20 |
-| Horário | ✅ Sim | HH:MM | 14:30 |
-| Telefone | ❌ Não | 10-11 dígitos | (11) 98765-4321 |
-
-### Passo a Passo
-
-1. Preencha o nome do cliente
-2. Escolha o serviço
-3. Selecione a data (não pode ser no passado)
-4. Escolha o horário
-5. Opcionalmente, adicione telefone
-6. Clique em "Criar Agendamento"
+- **Cliente:** e-mail + senha na página de login do cliente
+- **Prestador:** e-mail (ou **nome do negócio**) + senha na página da empresa
+- Esqueceu de entrar e tentou agendar? O site te leva pro login e **devolve pra mesma tela** depois
 
 ---
 
-##  Como Listar Agendamentos
+## 3. Marcando um horário
 
-Todos os agendamentos aparecem em uma tabela com:
-- **Data:** Quando é o agendamento
-- **Horário:** Que hora
-- **Status:** Agendado, Confirmado ou Cancelado
-- **Ações:** Botões para editar e deletar
+1. Vá em **Buscar**, encontre o prestador e abra os detalhes (ou vá direto em **Marcar horário**)
+2. Escolha o **serviço**, o **dia** (não pode ser passado) e o **horário** livre
+3. Confirme com seu nome — pronto! Anote o número do agendamento
+4. Se o horário já estiver ocupado, o site avisa: escolha outro
 
----
-
-##  Como Editar um Agendamento
-
-1. Encontre o agendamento na tabela
-2. Clique no botão(editar)
-3. Mude os dados que quiser
-4. Clique em "Salvar Alterações"
+**Regras:** data e hora precisam estar no futuro · nome (máx. 120) e serviço (máx. 200) · telefone opcional com 10–11 dígitos.
 
 ---
 
-##  Como Deletar um Agendamento
+## 4. Vendo seus horários (calendário)
 
-1. Encontre o agendamento na tabela
-2. Clique no botão(deletar)
-3. Confirme a exclusão
-4.  Agendamento deletado!
-
----
-
-## Validações Importantes
-
-### Data Não Pode Ser no Passado
-- ❌ Data: 2020-01-01 → ERRO
-- ✅ Data: 2024-04-25 → OK
-
-### Não Pode Ter Horários Duplicados
-- ❌ João 20/04 14:00 + Maria 20/04 14:00 → ERRO
-- ✅ João 20/04 14:00 + Maria 20/04 15:00 → OK
-
-### Formatos Corretos
-- **Data:** YYYY-MM-DD (ex: 2024-04-20)
-- **Horário:** HH:MM (ex: 14:30)
-- **Telefone:** (XX) XXXXX-XXXX ou XXXXXXXXXXX
+- A grade mostra o mês com a semana **começando na segunda**; fins de semana têm fundo diferente
+- Clique num **dia** para ver agendamentos e tarefas dele
+- Use os **chips de status** (agendado, confirmado, concluído, cancelado) para filtrar a lista do dia
 
 ---
 
-##  Resolução de Problemas
+## 5. Cancelando ou reagendando
 
-### "Erro ao conectar na API"
-**Solução:** Certifique-se que o servidor está rodando com `node server.js`
-
-### "Não é possível agendar em datas passadas"
-**Solução:** Escolha uma data no futuro
-
-### "Já existe um agendamento para..."
-**Solução:** Escolha outro horário ou outro dia
-
-### "Campos obrigatórios..."
-**Solução:** Preencha todos os campos (nome, serviço, data, horário)
+1. Abra **Meu perfil** → **Próximos agendamentos**
+2. Clique em **Cancelar ou reagendar**
+3. Para reagendar: escolha nova data e hora e confirme · para cancelar: confirme a exclusão
+4. Agendamentos passados só podem mudar de **status** (ex.: marcar como concluído)
 
 ---
 
-**Espero que de tudo certo com essa parada**
+## 6. Organizando tarefas
+
+1. Abra **Tarefas**, preencha título, data, hora (opcional) e categoria (casa, trabalho, estudos, saúde, pessoal, outro)
+2. Use as setas **←/→** para navegar entre dias, **Concluir** para dar baixa e **Excluir** para remover
+
+---
+
+## 7. Recebendo lembretes
+
+1. No **perfil**, abra **Notificações** e ative **Lembretes de agendamento** (o navegador pede permissão — só no seu clique)
+2. Escolha a antecedência: **15 min, 30 min ou 1 hora**
+3. Quando faltar pouco pro horário, você recebe o aviso **no site e pelo navegador** (precisa estar com alguma aba aberta)
+
+---
+
+## 8. Sou prestador: agenda e serviços
+
+**Agenda (`Sua agenda`):**
+- Filtre por **texto** (cliente/serviço), **status**, **período** e **ordene** por data/horário — o contador mostra "X de Y"
+- Cancele agendamentos direto da lista
+
+**Serviços (`Meus serviços`):**
+- **Adicione** nome, descrição, preço e duração · **Edite** inline · **Remova** com confirmação
+- Só você mexe nos seus — serviço de outro dono nem aparece
+
+---
+
+## 9. Tema claro/escuro
+
+- O site **segue o tema do seu sistema** automaticamente
+- O botão **sol/lua** no topo alterna manualmente e **lembra sua escolha**
+
+---
+
+## 10. Problemas comuns
+
+| Mensagem | O que fazer |
+|---|---|
+| `Entre na sua conta para continuar` | Faça login (ou crie a conta) — a escrita exige sessão |
+| `Já existe um agendamento...` | Horário ocupado: escolha outro (não é erro) |
+| `Não é possível agendar em data/horário passados` | Escolha dia/hora no futuro |
+| `Muitas tentativas...` | Aguarde ~15 min (proteção anti força-bruta) |
+| `Permissão de notificação não concedida` | Libere nas configurações do site no navegador |
+| Página demorando no Render | Plano gratuito "dorme": aguarde ~50s na primeira vez |
+
+---
+
+*Dúvidas? Fale com a equipe na página **Sobre nós**.* 💙

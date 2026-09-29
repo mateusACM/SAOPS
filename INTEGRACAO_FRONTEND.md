@@ -1,44 +1,52 @@
-#  GUIA DE INTEGRAÇÃO - FRONTEND COM API
+#  GUIA DE INTEGRAÇÃO - FRONTEND COM API (SAOPS)
 
-Este documento é para ajudar o Gustavo na integração da interface web com a API REST do backend.
+Referência da API REST para o frontend (`Frontend/js/api.js`). Leituras (`GET`) são públicas; escrita (`POST/PUT/DELETE`) exige sessão — sem login retorna `401`.
 
 ---
 
 ##  INFORMAÇÕES DA API
 
-**URL Base:** `http://localhost:3000`
+**URL Base (local):** `http://localhost:3000`
 
-**Porta:** `3000`
+**URL Base (produção):** `https://saops.onrender.com`
 
-**Ambiente:** Node.js + Express.js
+**Porta:** `3000` local (`PORT` no Render)
+
+**Ambiente:** Node.js 18+ + Express 5 + SQLite
 
 ---
 
 ##  COMO INICIAR O SERVIDOR
 
-No CMD, na pasta do projeto:
+Na raiz do projeto:
 
 ```bash
-node server.js
+npm install --prefix Backend
+PORT=3000 node Backend/server.js
 ```
 
-Deve aparecer:
+Deve aparecer (entre outras):
 ```
  Conectado ao banco de dados SQLite
  Tabela "agendamentos" pronta!
-Servidor rodando em http://localhost:3000
- Sistema com validações ativadas!
+ Tabela "tarefas" pronta!
+ Tabela "usuarios" pronta!
+ Tabela "sessoes" pronta!
+ Tabela "servicos" pronta!
+ Índice único data+horario pronto!
 ```
 
 ---
 
 ##  ENDPOINTS DISPONÍVEIS
 
-### 1️ CRIAR AGENDAMENTO
+### 1️ CRIAR AGENDAMENTO 🔒 (exige login)
 
 **Método:** `POST`
 
 **URL:** `http://localhost:3000/agendamentos`
+
+> Sem sessão (cookie `saops_token`) → `401 { "erro": "Login necessário." }`.
 
 **Content-Type:** `application/json`
 
@@ -70,7 +78,14 @@ Servidor rodando em http://localhost:3000
 **Resposta Erro (Status 400):**
 ```json
 {
-  "erro": "Não é possível agendar em datas passadas"
+  "erro": "Não é possível agendar em data/horário passados"
+}
+```
+
+**Resposta Erro (Status 409 — horário ocupado):**
+```json
+{
+  "erro": "Já existe um agendamento para 2024-04-20 às 14:00. Escolha outro horário."
 }
 ```
 
@@ -167,11 +182,13 @@ Servidor rodando em http://localhost:3000
 
 ---
 
-### 5 ATUALIZAR AGENDAMENTO
+### 5 ATUALIZAR AGENDAMENTO 🔒 (exige login)
 
 **Método:** `PUT`
 
 **URL:** `http://localhost:3000/agendamentos/1`
+
+> Passado só pode mudar de `status` (ex.: concluir); trocar data/hora passada dá `400`. `status` é salvo em minúsculas.
 
 **Content-Type:** `application/json`
 
@@ -203,7 +220,7 @@ Servidor rodando em http://localhost:3000
 
 ---
 
-### 6 DELETAR AGENDAMENTO
+### 6 DELETAR AGENDAMENTO 🔒 (exige login)
 
 **Método:** `DELETE`
 
@@ -223,6 +240,49 @@ Servidor rodando em http://localhost:3000
   "erro": "Agendamento não encontrado"
 }
 ```
+
+---
+
+##  AUTENTICAÇÃO (`/api/auth`)
+
+Sessão em cookie `saops_token` (`HttpOnly`, 7 dias). Como o frontend é servido pela mesma origem, o cookie vai sozinho no `fetch` — sem header manual.
+
+| Método | Rota | Body | Resposta |
+|---|---|---|---|
+| POST | `/api/auth/cadastro` | `{nome, email, senha(8–72), telefone?, tipo?}` | `200 + {sucesso, usuario}` / `400` / `409` e-mail em uso |
+| POST | `/api/auth/login` | `{email, senha}` (empresa aceita nome do negócio) | `200` / `401` |
+| POST | `/api/auth/oauth` | `{provider: 'google'\|'microsoft', credential, nonce?}` | `200` / `401` (`id_token` validado) |
+| POST | `/api/auth/logout` | — | `200` |
+| GET | `/api/auth/eu` | — | `200 + usuario` / `401` |
+| GET | `/api/auth/config` | — | `{googleClientId, microsoftClientId}` |
+
+Padrão do frontend (`ui.js`): `exigirLogin('login-cliente.html')` guarda `saops_voltar` e redireciona; após entrar, `voltarAposLogin(padrão)` devolve. As funções de escrita de `api.js` retornam `naoAutenticado: true` no `401`.
+
+---
+
+##  TAREFAS (`/tarefas`)
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/tarefas` (`?data=`, `?concluido=0\|1`) | — | Lista ordenada por data/hora |
+| GET | `/tarefas/:id` | — | Detalhe |
+| POST | `/tarefas` | 🔒 | `{titulo, data, hora?, categoria?}` → `201` |
+| PUT | `/tarefas/:id` | 🔒 | Parcial (só envia o que muda; `concluido` estrito) |
+| DELETE | `/tarefas/:id` | 🔒 | Remove |
+
+Categorias: `pessoal casa trabalho estudos saude outro`.
+
+---
+
+##  SERVIÇOS (`/servicos`)
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/servicos` | — | Vitrine (com `prestador`) |
+| GET | `/servicos/meus` | 🔒 | Do dono logado |
+| POST | `/servicos` | 🔒 | `{nome*, descricao?, preco?≥0, duracao_min?int>0}` → `201` |
+| PUT | `/servicos/:id` | 🔒 | Só o dono (alheio → `404`) |
+| DELETE | `/servicos/:id` | 🔒 | Só o dono |
 
 ---
 
@@ -358,12 +418,30 @@ Se enviar outro status:
 | 200 | OK | GET, PUT, DELETE com sucesso |
 | 201 | Created | POST com sucesso (criado novo) |
 | 400 | Bad Request | Validação falhou (campos inválidos) |
-| 404 | Not Found | ID não encontrado |
-| 500 | Server Error | Erro interno do servidor |
+| 401 | Unauthorized | Escrita sem sessão (`Login necessário.`) |
+| 404 | Not Found | ID não encontrado (ou serviço de outro dono) |
+| 409 | Conflict | Horário ocupado / e-mail já cadastrado |
+| 500 | Server Error | Erro interno (genérico, detalhes só no log) |
 
 ---
 
 ##  EXEMPLOS EM JAVASCRIPT (para o Frontend)
+
+> Mesma origem = cookies automáticos. Em escrita, trate o `401` chamando `exigirLogin()` (ver `ui.js`).
+
+### Entrar e escrever logado
+
+```javascript
+const r = await entrarConta(email, senha); // POST /api/auth/login
+if (!r.sucesso) { erroBox.textContent = r.erro; return; }
+salvarSessaoLocal(r.usuario);
+window.location.href = voltarAposLogin('busca.html');
+
+const ag = await criarAgendamento(dados); // POST /agendamentos (🔒)
+if (ag.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
+```
+
+---
 
 ### Criar Agendamento
 
@@ -490,7 +568,8 @@ const deletarAgendamento = async (id) => {
 
 ##  CHECKLIST 
 
-- [ ] API está rodando (`node server.js`)
+- [ ] API está rodando (`PORT=3000 node Backend/server.js`)
+- [ ] Escrita sem login dá 401; com login funciona
 - [ ] Consegue listar agendamentos (GET /agendamentos)
 - [ ] Consegue criar agendamento (POST /agendamentos)
 - [ ] Consegue atualizar agendamento (PUT /agendamentos/:id)
@@ -506,7 +585,13 @@ const deletarAgendamento = async (id) => {
 
 ### "Erro: Cannot fetch from localhost:3000"
 - Verifique se o servidor está rodando
-- Execute: `node server.js`
+- Execute: `PORT=3000 node Backend/server.js`
+
+### "erro: Login necessário." (401)
+- A rota de escrita exige sessão: chame `exigirLogin()` antes ou faça login
+
+### Conflito de horário (409)
+- `Já existe um agendamento...` → ofereça outro horário (não é erro de código)
 
 ### "erro: Não é possível agendar em datas passadas"
 - Use uma data no futuro

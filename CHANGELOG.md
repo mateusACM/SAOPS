@@ -6,6 +6,34 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.0] - 2026-09-29
+
+### Renomeado
+- Sistema **PGENFMA → SAOPS** (código, banco de chaves, `render.yaml`, repo GitHub)
+- Nova logo: símbolo "S" em degradê + wordmark (`Frontend/img/`)
+
+### Adicionado
+- **Autenticação real**: cadastro/login (bcrypt), sessão em cookie HttpOnly de 7 dias, OAuth **Google** (GIS) e **Microsoft** (popup + nonce), vínculo por e-mail verificado
+- **Escrita com login**: `POST/PUT/DELETE` exigem sessão (`401`); volta-do-login (`saops_voltar`, anti-open-redirect)
+- **Serviços do prestador**: tabela `servicos` + CRUD com dono (`GET /servicos`, `/meus`, validações)
+- **Filtros avançados**: texto, chips de status, período, ordenação, contador (agenda + calendário)
+- **Lembretes**: toggle no perfil, antecedência 15/30/60 min, Notification + toast (1x por agendamento)
+- **Tema claro/escuro** (segue o sistema, botão sol/lua, sem flash)
+- **SEO + IAs**: metatags/OG, `robots.txt` (bots de IA), `sitemap.xml`, `llms.txt`, JSON-LD, FAQ, PWA, 404 real
+- **Segurança**: `esc()` anti-XSS nas telas, `UNIQUE(data,horario)` + `409`, erros genéricos, `rate-limit`, `PRAGMA FK`, JWKS com cache, senha 8–72
+- **Docs**: README reescrito, `DIAGRAMAS.md` (Mermaid), `ARQUITETURA`/`MANUAL`/`INTEGRACAO` atualizados
+- Licença **MIT** (`LICENSE`)
+
+### Corrigido
+- Calendário desalinhado (semana segunda-primeira, fim de semana real), `moverFiltro` com `NaN`, datas UTC → locais
+- PUT permite concluir passado, valida data+hora, `status` em lowercase; tarefas com `concluido` estrito
+- Logout sem abortar, `social-btn:hover`, stats do Sobre (24 endpoints, 5,6k linhas)
+
+### Removido
+- `server-antigo(Backup).js`, SVGs da logo antiga, exemplo comentado, seletores mortos
+
+---
+
 ## [1.0.0] - 2026-07-22
 
 ### Adicionado
@@ -297,8 +325,8 @@ Para dúvidas sobre mudanças específicas:
 
 ---
 
-**Última atualização:** 22/07/2026
+**Última atualização:** 29/09/2026
 
-**Versão Atual:** 1.0.0 
+**Versão Atual:** 1.1.0 
 
 **Status:** Estamos muitos fodidos
