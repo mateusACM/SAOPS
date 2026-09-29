@@ -9,29 +9,32 @@ Arquitetura, banco de dados e fluxos do sistema em [Mermaid](https://mermaid.js.
 ```mermaid
 flowchart LR
     subgraph Navegador
-        P[18 páginas HTML]
-        JS[js: api · ui · tema · lembretes · social · toast]
-        SW[Service Worker<br/>(futuro: push em 2º plano)]
+        P["18 páginas HTML"]
+        JS["js: api, ui, tema, lembretes, social, toast"]
+        SW["Service Worker - futuro: push em 2o plano"]
     end
     subgraph "Node.js + Express (Render)"
-        R[Rotas amigáveis<br/>/:pagina + 404 real]
-        API[API REST<br/>/agendamentos · /tarefas · /servicos]
-        AUTH[/api/auth<br/>sessão em cookie HttpOnly/]
-        LIM[Rate-limit<br/>no /api/auth]
+        R["Rotas amigaveis /:pagina + 404 real"]
+        API["API REST - agendamentos, tarefas, servicos"]
+        AUTH["/api/auth - sessao em cookie HttpOnly"]
+        LIM["Rate-limit no /api/auth"]
     end
     subgraph Dados
-        DB[(SQLite<br/>agendamento.db)]
+        DB[("SQLite agendamento.db")]
     end
     subgraph IdPs
-        G[Google<br/>tokeninfo]
-        M[Microsoft<br/>JWKS RS256]
+        G["Google tokeninfo"]
+        M["Microsoft JWKS RS256"]
     end
-    P --> JS --> API & AUTH
+    P --> JS
+    JS --> API
+    JS --> AUTH
     API --> DB
     AUTH --> DB
-    AUTH -.valida id_token.-> G & M
+    AUTH -. valida id_token .-> G
+    AUTH -. valida id_token .-> M
     R --> P
-    LIM -.protege.-> AUTH
+    LIM -. protege .-> AUTH
 ```
 
 ---
@@ -48,8 +51,8 @@ erDiagram
         string email UK
         string senha_hash "null se social"
         string telefone
-        string tipo "cliente|empresa"
-        string provider "local|google|microsoft"
+        string tipo "cliente/empresa"
+        string provider "local/google/microsoft"
         string provider_id
         string foto
     }
@@ -72,7 +75,7 @@ erDiagram
         string servico
         string data "YYYY-MM-DD"
         string horario "HH:MM"
-        string status "agendado|confirmado|concluido|cancelado"
+        string status "agendado, confirmado, concluido, cancelado"
     }
     tarefas {
         int id PK
@@ -80,7 +83,7 @@ erDiagram
         string data
         string hora
         string categoria
-        int concluido "0|1"
+        int concluido "0/1"
     }
 ```
 
@@ -126,7 +129,7 @@ sequenceDiagram
     participant API as POST /api/auth/login
     participant DB as SQLite
     U->>F: e-mail (+ nome do negócio, se empresa) e senha
-    F->>API: {email, senha}
+    F->>API: e-mail e senha
     API->>DB: busca por email (bcrypt.compare)
     alt credenciais ok
         DB-->>API: usuário
@@ -152,7 +155,8 @@ sequenceDiagram
     S->>IdP: botão GIS / popup + nonce
     IdP-->>S: id_token
     S->>API: {provider, credential, nonce?}
-    API->>IdP: valida (Google: tokeninfo + aud/iss/email_verified;<br/>Microsoft: JWKS RS256 + aud/iss/exp/nonce)
+    API->>IdP: valida Google via tokeninfo (aud, iss, email verificado)
+    API->>IdP: valida Microsoft via JWKS RS256 (aud, iss, exp, nonce)
     alt provider_id conhecido
         API-->>S: sessão existente
     else e-mail verificado já cadastrado
@@ -197,7 +201,7 @@ stateDiagram-v2
     confirmado --> cancelado : PUT / DELETE
     concluido --> [*]
     cancelado --> [*]
-    note right of agendado : Passado só muda de status,<br/>não de data/horário
+    note right of agendado : Passado so muda de status
 ```
 
 ---
