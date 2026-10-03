@@ -25,7 +25,7 @@
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
 </head>
-<body>
+<body class="auth-page">
 
   <header>
     <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
@@ -40,24 +40,36 @@
     </nav>
   </header>
 
-  <main>
-    <p id="erro_login" class="erro-msg" hidden></p>
-    <form id="form_login_cliente" action="busca.html" method="get">
-      <label for="txt_email_login_cliente">E-mail</label>
-      <input type="email" id="txt_email_login_cliente" name="email" placeholder="voce@email.com" required>
+  <main class="auth-layout">
+    <section class="auth-intro" aria-labelledby="auth_intro_titulo">
+      <div class="auth-emblema"><img src="../img/logo.png" alt=""></div>
+      <p class="auth-eyebrow">Sua rotina, no seu tempo</p>
+      <h2 id="auth_intro_titulo">Mais tempo para o que importa.</h2>
+      <p>Encontre um horário, confirme seus compromissos e deixe sua agenda organizada em um só lugar.</p>
+      <div class="auth-benefits"><span>◷ &nbsp;Agendamentos simples</span><span>✓ &nbsp;Tudo organizado</span></div>
+    </section>
+    <section class="auth-card" aria-labelledby="auth_card_titulo">
+      <p class="auth-card-kicker">Bem-vindo de volta</p>
+      <h2 id="auth_card_titulo">Acesse sua conta</h2>
+      <p class="auth-card-copy">Entre para acompanhar seus horários e compromissos.</p>
+      <p id="erro_login" class="erro-msg" hidden></p>
+      <form id="form_login_cliente" action="busca.html" method="get">
+        <label for="txt_email_login_cliente">E-mail</label>
+        <input type="email" id="txt_email_login_cliente" name="email" placeholder="voce@email.com" autocomplete="email" required>
 
-      <label for="txt_senha_login_cliente">Senha</label>
-      <input type="password" id="txt_senha_login_cliente" name="senha" placeholder="Sua senha" required>
+        <label for="txt_senha_login_cliente">Senha</label>
+        <input type="password" id="txt_senha_login_cliente" name="senha" placeholder="Sua senha" autocomplete="current-password" required>
 
-      <button type="submit" id="btn_entrar_cliente">Entrar</button>
-    </form>
+        <button type="submit" id="btn_entrar_cliente">Entrar na minha conta</button>
+      </form>
 
-    <div class="social-login">
-      <p class="social-titulo">ou entre com</p>
-      <div id="google_btn"></div>
-    </div>
+      <div class="social-login">
+        <p class="social-titulo">ou continue com</p>
+        <div id="google_btn"></div>
+      </div>
 
-    <a href="cadastro-cliente.html">Ainda não tenho conta</a>
+      <p class="auth-switch">Ainda não tem conta? <a href="cadastro-cliente.html">Criar conta gratuita</a></p>
+    </section>
   </main>
 
 <script src="../js/toast.js"></script>

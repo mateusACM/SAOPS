@@ -25,7 +25,7 @@
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
 </head>
-<body>
+<body class="auth-page">
 
   <header>
     <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
@@ -40,24 +40,36 @@
     </nav>
   </header>
 
-  <main>
-    <p id="erro_login" class="erro-msg" hidden></p>
-    <form id="form_login_empresa" action="painel-prestador.html" method="get">
-      <label for="txt_identificador_login_empresa">E-mail ou nome do negócio</label>
-      <input type="text" id="txt_identificador_login_empresa" name="identificador" placeholder="empresa@email.com" required>
+  <main class="auth-layout auth-layout-business">
+    <section class="auth-intro" aria-labelledby="auth_intro_titulo">
+      <div class="auth-emblema"><img src="../img/logo.png" alt=""></div>
+      <p class="auth-eyebrow">Seu negócio em movimento</p>
+      <h2 id="auth_intro_titulo">Sua agenda trabalha com você.</h2>
+      <p>Cuide dos seus serviços, acompanhe os horários e mantenha tudo organizado em um só lugar.</p>
+      <div class="auth-benefits"><span>◷ &nbsp;Agenda centralizada</span><span>✦ &nbsp;Seu negócio em destaque</span></div>
+    </section>
+    <section class="auth-card" aria-labelledby="auth_card_titulo">
+      <p class="auth-card-kicker">Área do prestador</p>
+      <h2 id="auth_card_titulo">Acesse seu negócio</h2>
+      <p class="auth-card-copy">Entre com seu e-mail ou o nome do negócio.</p>
+      <p id="erro_login" class="erro-msg" hidden></p>
+      <form id="form_login_empresa" action="painel-prestador.html" method="get">
+        <label for="txt_identificador_login_empresa">E-mail ou nome do negócio</label>
+        <input type="text" id="txt_identificador_login_empresa" name="identificador" placeholder="Ex.: Studio Aurora" autocomplete="username" required>
 
-      <label for="txt_senha_login_empresa">Senha</label>
-      <input type="password" id="txt_senha_login_empresa" name="senha" placeholder="Sua senha" required>
+        <label for="txt_senha_login_empresa">Senha</label>
+        <input type="password" id="txt_senha_login_empresa" name="senha" placeholder="Sua senha" autocomplete="current-password" required>
 
-      <button type="submit" id="btn_entrar_empresa">Entrar</button>
-    </form>
+        <button type="submit" id="btn_entrar_empresa">Entrar no painel</button>
+      </form>
 
-    <div class="social-login">
-      <p class="social-titulo">ou entre com</p>
-      <div id="google_btn"></div>
-    </div>
+      <div class="social-login">
+        <p class="social-titulo">ou continue com</p>
+        <div id="google_btn"></div>
+      </div>
 
-    <a href="cadastro-empresa.html">Cadastrar meu negócio</a>
+      <p class="auth-switch">Ainda não cadastrou? <a href="cadastro-empresa.html">Cadastre seu negócio</a></p>
+    </section>
   </main>
 
 <script src="../js/toast.js"></script>
