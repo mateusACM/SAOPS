@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Este manual ensina a usar o **SAOPS** (https://saops.onrender.com/): marcar horários em barbearias, salões e clínicas, organizar tarefas e gerenciar seu negócio.
+Este manual ensina a usar o **SAOPS** (https://saops-zjyx.onrender.com/): marcar horários em barbearias, salões e clínicas, organizar tarefas e gerenciar seu negócio.
 
 ---
 
