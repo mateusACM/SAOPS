@@ -56,6 +56,9 @@
     document.title = 'SAOPS - ' + p.nome; document.getElementById('nome_prestador').textContent = p.nome; main.replaceChildren();
     const sec = document.createElement('section'); const titulo = document.createElement('h2'); titulo.textContent = 'Sobre o negócio'; sec.append(titulo);
     const meta = document.createElement('p'); meta.textContent = [p.categoria, p.endereco].filter(Boolean).join(' · '); sec.append(meta); main.append(sec);
+    const disponibilidade = p.disponibilidade || {}; const nomesDias = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
+    const diasAtivos = Object.entries(nomesDias).filter(([dia]) => disponibilidade[dia]?.ativo);
+    if (diasAtivos.length) { const horas = document.createElement('p'); horas.className = 't-meta'; const horarios = diasAtivos.map(([dia, nome]) => `${nome} ${disponibilidade[dia].inicio}–${disponibilidade[dia].fim}`); horas.textContent = `Atendimento: ${horarios.join(' · ')} · horários a cada ${disponibilidade.intervalo_min || 30} min`; sec.append(horas); }
     const serv = document.createElement('section'); const h = document.createElement('h2'); h.textContent = 'Serviços'; serv.append(h);
     if (!p.servicos.length) { const vazio = document.createElement('p'); vazio.textContent = 'Este prestador ainda não cadastrou serviços.'; serv.append(vazio); }
     p.servicos.forEach((s) => { const item = document.createElement('article'); const n = document.createElement('h3'); n.textContent = s.nome; item.append(n); if (s.descricao) { const d = document.createElement('p'); d.textContent = s.descricao; item.append(d); } const info = document.createElement('p'); info.textContent = [s.duracao_min ? `${s.duracao_min} min` : '', s.preco == null ? 'Preço a combinar' : `R$ ${Number(s.preco).toFixed(2).replace('.', ',')}`].filter(Boolean).join(' · '); item.append(info); serv.append(item); });

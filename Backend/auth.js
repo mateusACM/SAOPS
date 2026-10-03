@@ -6,13 +6,61 @@ const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { q, qGet, qAll, AGORA_SQL } = require('./database');
-const { enviarBoasVindas } = require('./email');
+const { enviarCodigoVerificacao } = require('./email');
 
 const router = express.Router();
 
 const COOKIE = 'saops_token';
 const SESSAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+const DISPONIBILIDADE_PADRAO = {
+    intervalo_min: 30,
+    dom: { ativo: false, inicio: '09:00', fim: '17:00' },
+    seg: { ativo: true, inicio: '09:00', fim: '17:00' },
+    ter: { ativo: true, inicio: '09:00', fim: '17:00' },
+    qua: { ativo: true, inicio: '09:00', fim: '17:00' },
+    qui: { ativo: true, inicio: '09:00', fim: '17:00' },
+    sex: { ativo: true, inicio: '09:00', fim: '17:00' },
+    sab: { ativo: false, inicio: '09:00', fim: '17:00' }
+};
+
+function normalizarDisponibilidade(valor) {
+    if (!valor || typeof valor !== 'object') return { sucesso: true, dados: DISPONIBILIDADE_PADRAO };
+    const intervalo = Number(valor.intervalo_min);
+    if (![15, 30, 60].includes(intervalo)) return { sucesso: false, erro: 'Escolha um intervalo de 15, 30 ou 60 minutos.' };
+    const saida = { intervalo_min: intervalo };
+    for (const dia of DIAS_SEMANA) {
+        const item = valor[dia] || {};
+        if (typeof item.ativo !== 'boolean') return { sucesso: false, erro: 'Marque quais dias da semana atendem.' };
+        const inicio = String(item.inicio || '09:00');
+        const fim = String(item.fim || '17:00');
+        const minutos = (h) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(inicio) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(fim)) return { sucesso: false, erro: 'Confira os horários de abertura e encerramento.' };
+        if (item.ativo && minutos(fim) <= minutos(inicio)) return { sucesso: false, erro: 'O encerramento precisa ser depois da abertura.' };
+        saida[dia] = { ativo: Boolean(item.ativo), inicio, fim };
+    }
+    return { sucesso: true, dados: saida };
+}
+
+function hashCodigoVerificacao(email, codigo) {
+    const segredo = process.env.AUTH_CODE_SECRET || process.env.RESEND_API_KEY || 'saops-codigo-local';
+    return crypto.createHmac('sha256', segredo).update(`${email}:${codigo}`).digest('hex');
+}
+
+async function enviarNovoCodigo(usuario) {
+    const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const hash = hashCodigoVerificacao(usuario.email, codigo);
+    await q(
+        `INSERT INTO codigos_verificacao_email (usuario_id, codigo_hash, expira_em, tentativas, enviado_em, solicitado_em)
+         VALUES ($1, $2, now() + interval '10 minutes', 0, NULL, now())
+         ON CONFLICT (usuario_id) DO UPDATE SET codigo_hash = EXCLUDED.codigo_hash,
+           expira_em = EXCLUDED.expira_em, tentativas = 0, enviado_em = NULL, solicitado_em = now()`,
+        [usuario.id, hash]
+    );
+    await enviarCodigoVerificacao(usuario, codigo);
+    await q('UPDATE codigos_verificacao_email SET enviado_em = now() WHERE usuario_id = $1', [usuario.id]);
+}
 
 // Telefone opcional com 10 ou 11 dígitos (mesma regra dos agendamentos)
 function validarTelefoneLocal(tel) {
@@ -64,7 +112,9 @@ function publico(u) {
         provider: u.provider,
         foto: u.foto || null,
         categoria: u.categoria || null,
-        endereco: u.endereco || null
+        endereco: u.endereco || null,
+        disponibilidade: u.disponibilidade || DISPONIBILIDADE_PADRAO,
+        email_verificado: Boolean(u.email_verificado)
     };
 }
 
@@ -130,15 +180,65 @@ router.post('/cadastro', async (req, res) => {
         const hash = await bcrypt.hash(senha, 10);
         // e-mail já é UNIQUE no banco: corrida aqui vira 409
         const novo = await q(
-            'INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo, categoria, endereco) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [nomeFinal, emailNorm, hash, telefone ? String(telefone).trim() : null, tipoFinal, categoriaFinal, enderecoFinal]
+            'INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo, categoria, endereco, disponibilidade, email_verificado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE) RETURNING *',
+            [nomeFinal, emailNorm, hash, telefone ? String(telefone).trim() : null, tipoFinal, categoriaFinal, enderecoFinal, DISPONIBILIDADE_PADRAO]
         );
-        enviarBoasVindas(novo.rows[0]).catch((e) => console.error('Falha ao enviar boas-vindas pelo Resend:', e.message));
-        criarSessao(req, res, novo.rows[0]);
+        try {
+            await enviarNovoCodigo(novo.rows[0]);
+            res.status(201).json({ sucesso: true, requerVerificacao: true, email: emailNorm });
+        } catch (envio) {
+            console.error('Falha ao enviar código de verificação:', envio.message);
+            res.status(503).json({ sucesso: false, requerVerificacao: true, email: emailNorm, erro: 'Sua conta foi criada, mas não conseguimos enviar o código. Tente reenviar em instantes.' });
+        }
     } catch (e) {
         if (e.code === '23505') return res.status(409).json({ sucesso: false, erro: 'Já existe uma conta com este e-mail.' });
         console.error('Erro interno:', e.message);
         res.status(500).json({ sucesso: false, erro: 'Erro ao criar conta' });
+    }
+});
+
+router.post('/reenviar-verificacao', async (req, res) => {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!EMAIL_REGEX.test(email) || email.length > 254) return res.status(400).json({ sucesso: false, erro: 'Informe um e-mail válido.' });
+    try {
+        const usuario = await qGet("SELECT * FROM usuarios WHERE email = $1 AND provider = 'local' AND email_verificado = FALSE", [email]);
+        if (!usuario) return res.json({ sucesso: true, mensagem: 'Se houver uma conta aguardando confirmação, enviaremos um novo código.' });
+        const registro = await qGet('SELECT solicitado_em FROM codigos_verificacao_email WHERE usuario_id = $1', [usuario.id]);
+        if (registro?.solicitado_em && Date.now() - new Date(registro.solicitado_em).getTime() < 60_000) {
+            return res.json({ sucesso: true, mensagem: 'Se houver uma conta aguardando confirmação, enviaremos um novo código.' });
+        }
+        await enviarNovoCodigo(usuario);
+        res.json({ sucesso: true, mensagem: 'Se houver uma conta aguardando confirmação, enviaremos um novo código.' });
+    } catch (e) {
+        console.error('Falha ao reenviar código:', e.message);
+        res.status(503).json({ sucesso: false, erro: 'Não foi possível enviar agora. Tente novamente em instantes.' });
+    }
+});
+
+router.post('/verificar-email', async (req, res) => {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const codigo = String(req.body?.codigo || '').trim();
+    if (!EMAIL_REGEX.test(email) || !/^\d{6}$/.test(codigo)) return res.status(400).json({ sucesso: false, erro: 'Informe o e-mail e o código de 6 dígitos.' });
+    try {
+        const usuario = await qGet("SELECT * FROM usuarios WHERE email = $1 AND provider = 'local' AND email_verificado = FALSE", [email]);
+        if (!usuario) return res.status(400).json({ sucesso: false, erro: 'Código inválido ou expirado. Solicite um novo código.' });
+        const registro = await qGet(
+            `UPDATE codigos_verificacao_email SET tentativas = tentativas + 1
+             WHERE usuario_id = $1 AND expira_em > now() AND tentativas < 5
+             RETURNING codigo_hash`, [usuario.id]
+        );
+        if (!registro) return res.status(400).json({ sucesso: false, erro: 'Código expirado ou muitas tentativas. Solicite outro código.' });
+        const informado = Buffer.from(hashCodigoVerificacao(email, codigo), 'hex');
+        const correto = Buffer.from(registro.codigo_hash, 'hex');
+        if (informado.length !== correto.length || !crypto.timingSafeEqual(informado, correto)) {
+            return res.status(400).json({ sucesso: false, erro: 'Esse código não confere. Confira o e-mail e tente novamente.' });
+        }
+        const atualizado = await q('UPDATE usuarios SET email_verificado = TRUE WHERE id = $1 RETURNING *', [usuario.id]);
+        await q('DELETE FROM codigos_verificacao_email WHERE usuario_id = $1', [usuario.id]);
+        return criarSessao(req, res, atualizado.rows[0]);
+    } catch (e) {
+        console.error('Falha ao validar código de e-mail:', e.message);
+        res.status(500).json({ sucesso: false, erro: 'Não foi possível confirmar o código.' });
     }
 });
 
@@ -160,6 +260,7 @@ router.post('/login', async (req, res) => {
 
         const ok = await bcrypt.compare(String(senha || ''), u.senha_hash);
         if (!ok) return res.status(401).json({ sucesso: false, erro: 'E-mail ou senha incorretos.' });
+        if (!u.email_verificado) return res.status(403).json({ sucesso: false, requerVerificacao: true, email: u.email, erro: 'Confirme seu e-mail antes de entrar.' });
         criarSessao(req, res, u);
     } catch (e) {
         console.error('Erro interno:', e.message);
@@ -196,10 +297,14 @@ router.put('/negocio', exigirLogin, async (req, res) => {
     const enderecoFinal = String(endereco || '').trim().slice(0, 200) || null;
     if (!nomeFinal) return res.status(400).json({ sucesso: false, erro: 'Informe o nome do negócio.' });
     if (nomeFinal.length > 120) return res.status(400).json({ sucesso: false, erro: 'Nome muito longo (máx. 120).' });
+    const horario = req.body?.disponibilidade === undefined
+        ? { sucesso: true, dados: req.usuario.disponibilidade || DISPONIBILIDADE_PADRAO }
+        : normalizarDisponibilidade(req.body.disponibilidade);
+    if (!horario.sucesso) return res.status(400).json({ sucesso: false, erro: horario.erro });
     try {
         const novo = await q(
-            'UPDATE usuarios SET nome = $1, categoria = $2, endereco = $3 WHERE id = $4 RETURNING *',
-            [nomeFinal, categoriaFinal, enderecoFinal, req.usuario.id]
+            'UPDATE usuarios SET nome = $1, categoria = $2, endereco = $3, disponibilidade = $4 WHERE id = $5 RETURNING *',
+            [nomeFinal, categoriaFinal, enderecoFinal, horario.dados, req.usuario.id]
         );
         res.json({ sucesso: true, usuario: publico(novo.rows[0]) });
     } catch (e) {
@@ -239,9 +344,10 @@ router.post('/oauth', async (req, res) => {
         if (existente) {
             // Vincula a conta existente ao provedor
             await q(
-                'UPDATE usuarios SET provider = $1, provider_id = $2, foto = COALESCE($3, foto) WHERE id = $4',
+                'UPDATE usuarios SET provider = $1, provider_id = $2, foto = COALESCE($3, foto), email_verificado = TRUE WHERE id = $4',
                 [provider, dados.id, dados.foto || null, existente.id]
             );
+            await q('DELETE FROM codigos_verificacao_email WHERE usuario_id = $1', [existente.id]);
             return criarSessao(req, res, { ...existente, provider, provider_id: dados.id, foto: dados.foto || existente.foto });
         }
 
@@ -250,7 +356,6 @@ router.post('/oauth', async (req, res) => {
             'INSERT INTO usuarios (nome, email, provider, provider_id, foto, tipo) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
             [dados.nome, dados.email, provider, dados.id, dados.foto || null, tipo === 'empresa' ? 'empresa' : 'cliente']
         );
-        enviarBoasVindas(novo.rows[0]).catch((e) => console.error('Falha ao enviar boas-vindas pelo Resend:', e.message));
         criarSessao(req, res, novo.rows[0]);
     } catch (e) {
         if (e.code === '23505') return res.status(409).json({ sucesso: false, erro: 'Já existe uma conta com este e-mail.' });

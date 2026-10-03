@@ -70,6 +70,8 @@ const SCHEMA = [
         foto TEXT,
         categoria TEXT,
         endereco TEXT,
+        disponibilidade JSONB NOT NULL DEFAULT '{"intervalo_min":30,"dom":{"ativo":false,"inicio":"09:00","fim":"17:00"},"seg":{"ativo":true,"inicio":"09:00","fim":"17:00"},"ter":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qua":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qui":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sex":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sab":{"ativo":false,"inicio":"09:00","fim":"17:00"}}'::jsonb,
+        email_verificado BOOLEAN NOT NULL DEFAULT TRUE,
         criado_em TEXT DEFAULT (to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS'))
     )`,
     `CREATE TABLE IF NOT EXISTS sessoes (
@@ -100,6 +102,18 @@ const SCHEMA = [
     `CREATE INDEX IF NOT EXISTS idx_tarefas_usuario ON tarefas(usuario_id)`,
     `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS categoria TEXT`,
     `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS endereco TEXT`,
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS disponibilidade JSONB NOT NULL DEFAULT '{"intervalo_min":30,"dom":{"ativo":false,"inicio":"09:00","fim":"17:00"},"seg":{"ativo":true,"inicio":"09:00","fim":"17:00"},"ter":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qua":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qui":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sex":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sab":{"ativo":false,"inicio":"09:00","fim":"17:00"}}'::jsonb`,
+    // Contas antigas ficam verificadas na migração; novos cadastros locais começam pendentes.
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificado BOOLEAN NOT NULL DEFAULT TRUE`,
+    `CREATE TABLE IF NOT EXISTS codigos_verificacao_email (
+        usuario_id BIGINT PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+        codigo_hash TEXT NOT NULL,
+        expira_em TIMESTAMPTZ NOT NULL,
+        tentativas INTEGER NOT NULL DEFAULT 0,
+        enviado_em TIMESTAMPTZ,
+        solicitado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`,
+    `ALTER TABLE codigos_verificacao_email ADD COLUMN IF NOT EXISTS solicitado_em TIMESTAMPTZ NOT NULL DEFAULT now()`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes(expira_em)`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)`
 ];

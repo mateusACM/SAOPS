@@ -42,7 +42,8 @@
 | 🗓️ **Calendário mensal** | Visão dia a dia de agendamentos + tarefas, com semana começando na segunda |
 | ✅ **Tarefas** | Categorias (casa, trabalho, estudos, saúde, pessoal), prazos e conclusão |
 | ✂️ **Serviços do prestador** | CRUD real: nome, descrição, preço e duração — cada dono gerencia os seus |
-| ✉️ **Boas-vindas por e-mail** | E-mail transacional após cadastro local ou Google, enviado pelo Resend |
+| 🕒 **Expediente do prestador** | Define dias, abertura, fechamento e intervalo; a reserva mostra apenas horários compatíveis com o serviço |
+| ✉️ **Verificação por e-mail** | Código de 6 dígitos após cadastro local, expira em 10 minutos e limita tentativas |
 | 🔗 **Compartilhar perfil** | Link direto do perfil público do prestador para enviar aos clientes |
 | 🔔 **Lembretes** | Aviso no site + notificação do navegador quando faltar pouco pro horário |
 | 🔐 **Login social** | Conta local (e-mail/senha com bcrypt) ou Google via OAuth |
@@ -154,7 +155,7 @@ Login social local (opcional): acrescente no mesmo `.env` `GOOGLE_CLIENT_ID` e c
 
 O `render.yaml` na raiz configura o Blueprint: a cada push na `main`, o Render reinstala e reinicia sozinho (~1 min). Variáveis de ambiente no dashboard: `DATABASE_URL` (obrigatória), `NODE_ENV=production`, `GOOGLE_CLIENT_ID`, `RESEND_API_KEY` e `RESEND_FROM`.
 
-O Resend envia o e-mail de boas-vindas após o cadastro local. Crie uma API key no Resend, verifique o domínio remetente e configure `RESEND_API_KEY` e `RESEND_FROM` no Render (e no `.env` local). Sem essas duas variáveis, o cadastro continua funcionando e o envio é ignorado. `SAOPS_PUBLIC_URL` define o endereço usado no botão do e-mail.
+O Resend envia o código de verificação após o cadastro local. Configure `RESEND_API_KEY` no Render (e no `.env` local). Sem chave, novos cadastros aguardam a confirmação e exibem a opção de reenviar quando o serviço estiver configurado. O remetente de teste `SAOPS <onboarding@resend.dev>` pode ser usado durante desenvolvimento; para enviar códigos aos clientes em produção, verifique um domínio no Resend e defina `RESEND_FROM` com um endereço desse domínio.
 
 > ⚠️ Plano gratuito: o serviço dorme sem tráfego (~50s pra acordar). Os dados vivem no Supabase (PostgreSQL) e **não zeram mais** a cada deploy.
 

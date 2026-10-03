@@ -25,7 +25,7 @@
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
 </head>
-<body class="signup-page">
+<body class="signup-page" data-cadastro="empresa">
 
   <header>
     <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
@@ -44,7 +44,9 @@
     <section class="signup-intro"><p class="signup-eyebrow">SAOPS · seu negócio</p><h2>Mais organização para atender melhor.</h2><p>Monte seu perfil, publique seus serviços e deixe clientes encontrarem horários com você.</p><div class="signup-points"><span>✓ Perfil profissional</span><span>✓ Serviços e agenda no mesmo lugar</span></div></section>
     <section class="signup-card"><p class="auth-card-kicker">Conta de prestador</p><h2>Cadastre seu negócio</h2><p class="auth-card-copy">Seus dados podem ser atualizados depois no perfil do negócio.</p>
     <p id="erro_cadastro" class="erro-msg" role="alert" hidden></p>
+    <div class="signup-steps" aria-label="Etapas do cadastro"><span data-etapa-status="1" class="atual"><b>1</b><i>Seu negócio</i></span><span data-etapa-status="2"><b>2</b><i>Sua senha</i></span><span data-etapa-status="3"><b>3</b><i>Confirmação</i></span></div>
     <form id="form_cadastro_empresa" action="painel-prestador.html" method="get">
+      <div data-etapa="1">
       <label for="txt_nome_negocio_cadastro_empresa">Nome do negócio</label>
       <input type="text" id="txt_nome_negocio_cadastro_empresa" name="nome-negocio" placeholder="Ex.: Barbearia Vintage" autocomplete="organization" maxlength="120" required>
 
@@ -62,13 +64,18 @@
 
       <label for="txt_email_cadastro_empresa">E-mail</label>
       <input type="email" id="txt_email_cadastro_empresa" name="email" placeholder="empresa@email.com" autocomplete="email" maxlength="254" required>
+      <button type="button" class="signup-next" data-proxima>Continuar <span aria-hidden="true">→</span></button>
+      </div>
 
+      <div data-etapa="2" hidden>
       <label for="txt_senha_cadastro_empresa">Senha</label>
       <input type="password" id="txt_senha_cadastro_empresa" name="senha" placeholder="Mínimo 8 caracteres" autocomplete="new-password" minlength="8" maxlength="72" required>
       <div class="senha-forca" aria-live="polite"><span id="forca_senha_empresa"></span></div><small id="dica_senha_empresa" class="campo-dica">Use 8 ou mais caracteres e combine letras e números.</small>
 
-      <button type="submit" id="btn_cadastrar_negocio">Cadastrar negócio</button>
+      <div class="signup-actions"><button type="button" class="secundario" data-voltar>Voltar</button><button type="submit" id="btn_cadastrar_negocio">Cadastrar negócio</button></div>
+      </div>
     </form>
+    <section id="painel_verificacao" class="verify-panel" hidden><span class="verify-icon" aria-hidden="true">✉</span><p class="auth-card-kicker">Última etapa</p><h2 id="titulo_verificacao">Confirme seu e-mail</h2><p id="texto_verificacao" class="auth-card-copy">Enviamos um código de 6 dígitos para <strong id="email_verificacao"></strong>.</p><form id="form_verificar_email"><label for="codigo_verificacao">Código de verificação</label><input id="codigo_verificacao" class="verify-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required><p id="erro_verificacao" role="alert" class="erro-msg" hidden></p><button type="submit" id="btn_verificar_email">Confirmar e entrar</button></form><p class="resend-copy">Não recebeu? <button type="button" id="btn_reenviar_codigo" class="resend-button">Reenviar código</button></p></section>
 
     <p class="signup-switch">Já tem conta? <a href="login-empresa.html">Entrar</a></p></section>
   </main>
@@ -77,50 +84,7 @@
 <script src="../js/ui.js"></script>
 <script src="../js/api.js"></script>
 <script src="../js/lembretes.js"></script>
-<script>
-  // Cadastro real do negócio: conta no backend + dados extras locais
-  document.getElementById('form_cadastro_empresa').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const erro = document.getElementById('erro_cadastro');
-    const negocio = document.getElementById('txt_nome_negocio_cadastro_empresa').value.trim();
-    const categoria = document.getElementById('txt_categoria_cadastro_empresa').value;
-    const endereco = document.getElementById('txt_endereco_cadastro_empresa').value.trim();
-    const email = document.getElementById('txt_email_cadastro_empresa').value.trim().toLowerCase();
-    const senha = document.getElementById('txt_senha_cadastro_empresa').value;
-
-    if (!categoria) {
-      erro.hidden = false;
-      erro.textContent = 'Escolha a categoria do negócio.';
-      return;
-    }
-    if (senha.length < 8) {
-      erro.hidden = false;
-      erro.textContent = 'A senha deve ter ao menos 8 caracteres.';
-      return;
-    }
-
-    const btn = document.getElementById('btn_cadastrar_negocio');
-    btn.disabled = true;
-    const r = await cadastrarConta({ nome: negocio, email, senha, tipo: 'empresa', categoria, endereco });
-    btn.disabled = false;
-
-    if (!r.sucesso) {
-      erro.hidden = false;
-      erro.textContent = r.erro;
-      return;
-    }
-    salvarSessaoLocal(r.usuario);
-    toast('Negócio cadastrado!', 'sucesso');
-    setTimeout(() => { window.location.href = voltarAposLogin('painel-prestador.html'); }, 400);
-  });
-  const campoSenha = document.getElementById('txt_senha_cadastro_empresa');
-  campoSenha.addEventListener('input', () => {
-    const valor = campoSenha.value;
-    const pontos = [valor.length >= 8, /[A-Za-z]/.test(valor) && /\d/.test(valor), /[^A-Za-z0-9]/.test(valor)].filter(Boolean).length;
-    document.getElementById('forca_senha_empresa').dataset.nivel = String(pontos);
-    document.getElementById('dica_senha_empresa').textContent = !valor ? 'Use 8 ou mais caracteres e combine letras e números.' : ['Senha muito curta', 'Adicione letras e números', 'Boa senha', 'Senha forte'][pontos];
-  });
-</script>
+<script src="../js/cadastro.js"></script>
 
 <script src="../js/tema.js"></script>
 </body>

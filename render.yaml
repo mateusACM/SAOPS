@@ -16,6 +16,6 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM
-        sync: false
+        value: SAOPS <onboarding@resend.dev>
       - key: SAOPS_PUBLIC_URL
         value: https://saops-zjyx.onrender.com

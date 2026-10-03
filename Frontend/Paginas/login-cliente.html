@@ -92,6 +92,7 @@
     btn.disabled = false;
 
     if (!r.sucesso) {
+      if (r.requerVerificacao && r.email) { window.location.href = 'cadastro-cliente.html?verificar=' + encodeURIComponent(r.email); return; }
       erro.hidden = false;
       erro.textContent = r.erro;
       return;

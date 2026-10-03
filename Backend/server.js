@@ -115,14 +115,14 @@ app.get('/api/status', (req, res) => {
 app.get('/api/prestadores', async (req, res) => {
     try {
         const rows = await qAll(
-            `SELECT u.id, u.nome, u.categoria, u.endereco, s.id AS servico_id,
+            `SELECT u.id, u.nome, u.categoria, u.endereco, u.disponibilidade, s.id AS servico_id,
                     s.nome AS servico_nome, s.descricao, s.preco, s.duracao_min
              FROM usuarios u LEFT JOIN servicos s ON s.usuario_id = u.id
              WHERE u.tipo = 'empresa' ORDER BY u.nome, s.nome`
         );
         const porId = new Map();
         for (const row of rows) {
-            if (!porId.has(row.id)) porId.set(row.id, { id: row.id, nome: row.nome, categoria: row.categoria, endereco: row.endereco, servicos: [] });
+            if (!porId.has(row.id)) porId.set(row.id, { id: row.id, nome: row.nome, categoria: row.categoria, endereco: row.endereco, disponibilidade: row.disponibilidade, servicos: [] });
             if (row.servico_id !== null) porId.get(row.id).servicos.push({ id: row.servico_id, nome: row.servico_nome, descricao: row.descricao, preco: row.preco, duracao_min: row.duracao_min });
         }
         const prestadores = [...porId.values()];
@@ -190,15 +190,33 @@ app.post('/agendamentos', exigirLogin, async (req, res) => {
     try {
         const prestadorId = Number(prestador_id);
         if (!Number.isSafeInteger(prestadorId) || prestadorId <= 0) return res.status(400).json({ erro: 'Escolha um prestador válido.' });
-        const prestador = await qGet("SELECT id FROM usuarios WHERE id = $1 AND tipo = 'empresa'", [prestadorId]);
+        const prestador = await qGet("SELECT id, disponibilidade FROM usuarios WHERE id = $1 AND tipo = 'empresa'", [prestadorId]);
         if (!prestador) return res.status(404).json({ erro: 'Prestador não encontrado.' });
-        const servicoValido = await qGet('SELECT id FROM servicos WHERE usuario_id = $1 AND nome = $2', [prestadorId, String(servico).trim()]);
+        const servicoValido = await qGet('SELECT id, duracao_min FROM servicos WHERE usuario_id = $1 AND nome = $2', [prestadorId, String(servico).trim()]);
         if (!servicoValido) return res.status(400).json({ erro: 'Escolha um serviço deste prestador.' });
-        const existente = await qGet('SELECT * FROM agendamentos WHERE prestador_id = $1 AND data = $2 AND horario = $3', [prestadorId, data, horario]);
-
-        if (existente) {
+        const diaSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][new Date(`${data}T12:00:00`).getDay()];
+        const expediente = prestador.disponibilidade?.[diaSemana];
+        if (!expediente?.ativo) return res.status(400).json({ erro: 'O prestador não atende nesse dia.' });
+        const emMinutos = (hora) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5));
+        const duracao = Number(servicoValido.duracao_min || prestador.disponibilidade?.intervalo_min || 30);
+        const intervalo = Number(prestador.disponibilidade?.intervalo_min || 30);
+        const inicio = emMinutos(horario);
+        if (inicio < emMinutos(expediente.inicio) || inicio + duracao > emMinutos(expediente.fim) || (inicio - emMinutos(expediente.inicio)) % intervalo !== 0) {
+            return res.status(400).json({ erro: 'Escolha um horário dentro do expediente do prestador.' });
+        }
+        const agendamentosDia = await qAll(
+            `SELECT a.horario, COALESCE(s.duracao_min, 30) AS duracao_min
+             FROM agendamentos a LEFT JOIN servicos s ON s.usuario_id = a.prestador_id AND s.nome = a.servico
+             WHERE a.prestador_id = $1 AND a.data = $2 AND lower(COALESCE(a.status, 'agendado')) <> 'cancelado'`,
+            [prestadorId, data]
+        );
+        const conflito = agendamentosDia.some((a) => {
+            const inicioOcupado = emMinutos(a.horario);
+            return inicio < inicioOcupado + Number(a.duracao_min || 30) && inicioOcupado < inicio + duracao;
+        });
+        if (conflito) {
             return res.status(409).json({
-                erro: `Já existe um agendamento para ${data} às ${horario}. Escolha outro horário.`
+                erro: `Esse horário conflita com outro atendimento em ${data}. Escolha outro horário.`
             });
         }
 
@@ -364,8 +382,8 @@ app.get('/agendamentos/data/:data', async (req, res) => {
     try {
         const prestadorId = Number(req.query.prestador_id);
         const rows = Number.isSafeInteger(prestadorId) && prestadorId > 0
-            ? await qAll('SELECT horario FROM agendamentos WHERE data = $1 AND prestador_id = $2 ORDER BY horario', [data, prestadorId])
-            : await qAll('SELECT horario FROM agendamentos WHERE data = $1 ORDER BY horario', [data]);
+            ? await qAll("SELECT a.horario, COALESCE(s.duracao_min, 30) AS duracao_min FROM agendamentos a LEFT JOIN servicos s ON s.usuario_id = a.prestador_id AND s.nome = a.servico WHERE a.data = $1 AND a.prestador_id = $2 AND lower(COALESCE(a.status, 'agendado')) <> 'cancelado' ORDER BY a.horario", [data, prestadorId])
+            : await qAll("SELECT horario, 30 AS duracao_min FROM agendamentos WHERE data = $1 AND lower(COALESCE(status, 'agendado')) <> 'cancelado' ORDER BY horario", [data]);
         res.json({
             mensagem: ` Agendamentos para ${data}`,
             total: rows.length,

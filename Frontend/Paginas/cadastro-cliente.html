@@ -25,7 +25,7 @@
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
 </head>
-<body class="signup-page">
+<body class="signup-page" data-cadastro="cliente">
 
   <header>
     <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
@@ -44,7 +44,9 @@
     <section class="signup-intro"><p class="signup-eyebrow">SAOPS · sua agenda</p><h2>Agende com mais tranquilidade.</h2><p>Crie sua conta para descobrir profissionais, marcar horários e acompanhar seus compromissos.</p><div class="signup-points"><span>✓ Perfil em poucos passos</span><span>✓ Seus horários em um só lugar</span></div></section>
     <section class="signup-card"><p class="auth-card-kicker">Conta de cliente</p><h2>Comece por aqui</h2><p class="auth-card-copy">Preencha seus dados para criar sua conta gratuita.</p>
     <p id="erro_cadastro" class="erro-msg" role="alert" hidden></p>
+    <div class="signup-steps" aria-label="Etapas do cadastro"><span data-etapa-status="1" class="atual"><b>1</b><i>Seus dados</i></span><span data-etapa-status="2"><b>2</b><i>Sua senha</i></span><span data-etapa-status="3"><b>3</b><i>Confirmação</i></span></div>
     <form id="form_cadastro_cliente" action="busca.html" method="get">
+      <div data-etapa="1">
       <label for="txt_nome_cadastro_cliente">Nome completo</label>
       <input type="text" id="txt_nome_cadastro_cliente" name="nome" placeholder="Seu nome" autocomplete="name" maxlength="120" required>
 
@@ -53,7 +55,10 @@
 
       <label for="txt_telefone_cadastro_cliente">Telefone</label>
       <input type="tel" id="txt_telefone_cadastro_cliente" name="telefone" placeholder="(11) 99999-9999" autocomplete="tel" inputmode="tel" maxlength="16" required>
+      <button type="button" class="signup-next" data-proxima>Continuar <span aria-hidden="true">→</span></button>
+      </div>
 
+      <div data-etapa="2" hidden>
       <label for="txt_senha_cadastro_cliente">Senha</label>
       <input type="password" id="txt_senha_cadastro_cliente" name="senha" placeholder="Mínimo 8 caracteres" autocomplete="new-password" minlength="8" maxlength="72" required>
       <div class="senha-forca" aria-live="polite"><span id="forca_senha_cliente"></span></div><small id="dica_senha_cliente" class="campo-dica">Use 8 ou mais caracteres e combine letras e números.</small>
@@ -61,8 +66,10 @@
       <label for="txt_confirmar_senha_cadastro_cliente">Confirmar senha</label>
       <input type="password" id="txt_confirmar_senha_cadastro_cliente" name="confirmar-senha" placeholder="Repita a senha" autocomplete="new-password" minlength="8" maxlength="72" required>
 
-      <button type="submit" id="btn_criar_conta_cliente">Criar conta</button>
+      <div class="signup-actions"><button type="button" class="secundario" data-voltar>Voltar</button><button type="submit" id="btn_criar_conta_cliente">Criar conta</button></div>
+      </div>
     </form>
+    <section id="painel_verificacao" class="verify-panel" hidden><span class="verify-icon" aria-hidden="true">✉</span><p class="auth-card-kicker">Última etapa</p><h2 id="titulo_verificacao">Confirme seu e-mail</h2><p id="texto_verificacao" class="auth-card-copy">Enviamos um código de 6 dígitos para <strong id="email_verificacao"></strong>.</p><form id="form_verificar_email"><label for="codigo_verificacao">Código de verificação</label><input id="codigo_verificacao" class="verify-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required><p id="erro_verificacao" role="alert" class="erro-msg" hidden></p><button type="submit" id="btn_verificar_email">Confirmar e entrar</button></form><p class="resend-copy">Não recebeu? <button type="button" id="btn_reenviar_codigo" class="resend-button">Reenviar código</button></p></section>
 
     <p class="signup-switch">Já tem conta? <a href="login-cliente.html">Entrar</a></p></section>
   </main>
@@ -71,59 +78,7 @@
 <script src="../js/ui.js"></script>
 <script src="../js/api.js"></script>
 <script src="../js/lembretes.js"></script>
-<script>
-  // Cadastro real: cria a conta no backend e entra (cookie HttpOnly)
-  document.getElementById('form_cadastro_cliente').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const erro = document.getElementById('erro_cadastro');
-    const nome = document.getElementById('txt_nome_cadastro_cliente').value.trim();
-    const email = document.getElementById('txt_email_cadastro_cliente').value.trim().toLowerCase();
-    const telefone = document.getElementById('txt_telefone_cadastro_cliente').value.trim();
-    const senha = document.getElementById('txt_senha_cadastro_cliente').value;
-  const confirmar = document.getElementById('txt_confirmar_senha_cadastro_cliente').value;
-
-    if (senha !== confirmar) {
-      erro.hidden = false;
-      erro.textContent = 'As senhas não conferem. Digite a mesma senha nos dois campos.';
-      return;
-    }
-    if (senha.length < 8) {
-      erro.hidden = false;
-      erro.textContent = 'A senha deve ter ao menos 8 caracteres.';
-      return;
-    }
-
-    const btn = document.getElementById('btn_criar_conta_cliente');
-    btn.disabled = true;
-    const r = await cadastrarConta({ nome, email, senha, telefone, tipo: 'cliente' });
-    btn.disabled = false;
-
-    if (!r.sucesso) {
-      erro.hidden = false;
-      erro.textContent = r.erro;
-      return;
-    }
-    salvarSessaoLocal(r.usuario);
-    toast('Conta criada! Bem-vindo(a), ' + r.usuario.nome + '.', 'sucesso');
-    setTimeout(() => { window.location.href = voltarAposLogin('busca.html'); }, 400);
-  });
-  const campoSenha = document.getElementById('txt_senha_cadastro_cliente');
-  const barraSenha = document.getElementById('forca_senha_cliente');
-  const dicaSenha = document.getElementById('dica_senha_cliente');
-  campoSenha.addEventListener('input', () => {
-    const valor = campoSenha.value;
-    const pontos = [valor.length >= 8, /[A-Za-z]/.test(valor) && /\d/.test(valor), /[^A-Za-z0-9]/.test(valor)].filter(Boolean).length;
-    barraSenha.dataset.nivel = String(pontos);
-    dicaSenha.textContent = !valor ? 'Use 8 ou mais caracteres e combine letras e números.' : ['Senha muito curta', 'Adicione letras e números', 'Boa senha', 'Senha forte'][pontos];
-  });
-  document.getElementById('txt_telefone_cadastro_cliente').addEventListener('input', (e) => {
-    const digitos = e.target.value.replace(/\D/g, '').slice(0, 11);
-    if (!digitos) { e.target.value = ''; return; }
-    const ddd = digitos.slice(0, 2);
-    const restante = digitos.slice(2);
-    e.target.value = '(' + ddd + ')' + (restante ? ' ' + restante.slice(0, digitos.length > 10 ? 5 : 4) + (restante.length > (digitos.length > 10 ? 5 : 4) ? '-' + restante.slice(digitos.length > 10 ? 5 : 4) : '') : '');
-  });
-</script>
+<script src="../js/cadastro.js"></script>
 
 <script src="../js/tema.js"></script>
 </body>

@@ -18,6 +18,17 @@
         <label for="endereco_negocio">Endereço</label><input id="endereco_negocio" maxlength="200" autocomplete="street-address" placeholder="Rua, número, bairro">
         <button type="submit">Salvar perfil</button></form>
     </section>
+    <section class="business-hours-card"><div class="business-heading"><div><p class="auth-card-kicker">Sua agenda</p><h2>Horários de atendimento</h2></div><span class="service-icon" aria-hidden="true">◷</span></div><p class="business-help">Marque os dias e defina quando seus clientes podem agendar.</p><p id="status_horarios" role="status"></p>
+      <form id="horarios_form"><div class="hours-grid"><div class="hours-head"><span>Dia</span><span>Atende</span><span>Abre</span><span>Fecha</span></div>
+        <div class="hours-row"><strong>Segunda</strong><span><input type="checkbox" data-dia="seg" checked aria-label="Atende na segunda"></span><input type="time" data-inicio="seg" value="09:00" aria-label="Abertura de segunda"><input type="time" data-fim="seg" value="17:00" aria-label="Fechamento de segunda"></div>
+        <div class="hours-row"><strong>Terça</strong><span><input type="checkbox" data-dia="ter" checked aria-label="Atende na terça"></span><input type="time" data-inicio="ter" value="09:00" aria-label="Abertura de terça"><input type="time" data-fim="ter" value="17:00" aria-label="Fechamento de terça"></div>
+        <div class="hours-row"><strong>Quarta</strong><span><input type="checkbox" data-dia="qua" checked aria-label="Atende na quarta"></span><input type="time" data-inicio="qua" value="09:00" aria-label="Abertura de quarta"><input type="time" data-fim="qua" value="17:00" aria-label="Fechamento de quarta"></div>
+        <div class="hours-row"><strong>Quinta</strong><span><input type="checkbox" data-dia="qui" checked aria-label="Atende na quinta"></span><input type="time" data-inicio="qui" value="09:00" aria-label="Abertura de quinta"><input type="time" data-fim="qui" value="17:00" aria-label="Fechamento de quinta"></div>
+        <div class="hours-row"><strong>Sexta</strong><span><input type="checkbox" data-dia="sex" checked aria-label="Atende na sexta"></span><input type="time" data-inicio="sex" value="09:00" aria-label="Abertura de sexta"><input type="time" data-fim="sex" value="17:00" aria-label="Fechamento de sexta"></div>
+        <div class="hours-row"><strong>Sábado</strong><span><input type="checkbox" data-dia="sab" aria-label="Atende no sábado"></span><input type="time" data-inicio="sab" value="09:00" aria-label="Abertura de sábado"><input type="time" data-fim="sab" value="17:00" aria-label="Fechamento de sábado"></div>
+        <div class="hours-row"><strong>Domingo</strong><span><input type="checkbox" data-dia="dom" aria-label="Atende no domingo"></span><input type="time" data-inicio="dom" value="09:00" aria-label="Abertura de domingo"><input type="time" data-fim="dom" value="17:00" aria-label="Fechamento de domingo"></div>
+      </div><label class="intervalo-label" for="intervalo_horarios">Espaço entre os horários</label><select id="intervalo_horarios"><option value="15">A cada 15 minutos</option><option value="30" selected>A cada 30 minutos</option><option value="60">A cada 1 hora</option></select><button type="submit">Salvar horários</button></form>
+    </section>
     <section class="business-services-card"><div class="business-heading"><div><p class="auth-card-kicker">O que você oferece</p><h2>Seus serviços</h2></div><span class="service-icon" aria-hidden="true">✦</span></div><p id="status_servicos" role="status">Carregando...</p><ul id="lista_servicos"></ul></section>
     <section class="business-service-form"><p class="auth-card-kicker">Monte seu catálogo</p><h2 id="titulo_servico">Adicionar serviço</h2><p class="business-help">Inclua nome, duração e preço para facilitar o agendamento.</p><form id="form_servico">
       <label for="servico_nome">Nome</label><input id="servico_nome" maxlength="120" required>
@@ -33,7 +44,31 @@
     let negocioId = null;
     const q = (id) => document.getElementById(id);
     const formServico = q('form_servico');
+    const dias = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
     function informar(id, texto) { q(id).textContent = texto; }
+    function disponibilidadeAtual() {
+      const dados = { intervalo_min: Number(q('intervalo_horarios').value) };
+      dias.forEach((dia) => { dados[dia] = { ativo: q('horarios_form').querySelector(`[data-dia="${dia}"]`).checked, inicio: q('horarios_form').querySelector(`[data-inicio="${dia}"]`).value || '09:00', fim: q('horarios_form').querySelector(`[data-fim="${dia}"]`).value || '17:00' }; });
+      return dados;
+    }
+    function preencherDisponibilidade(disponibilidade) {
+      const atual = disponibilidade || {};
+      q('intervalo_horarios').value = String(atual.intervalo_min || 30);
+      dias.forEach((dia) => {
+        const item = atual[dia] || { ativo: dia !== 'sab' && dia !== 'dom', inicio: '09:00', fim: '17:00' };
+        const checkbox = q('horarios_form').querySelector(`[data-dia="${dia}"]`);
+        const inicio = q('horarios_form').querySelector(`[data-inicio="${dia}"]`);
+        const fim = q('horarios_form').querySelector(`[data-fim="${dia}"]`);
+        checkbox.checked = Boolean(item.ativo); inicio.value = item.inicio || '09:00'; fim.value = item.fim || '17:00';
+        const alternar = () => { inicio.disabled = !checkbox.checked; fim.disabled = !checkbox.checked; };
+        checkbox.onchange = alternar; alternar();
+      });
+    }
+    async function salvarPerfil(mensagem) {
+      const out = await chamarAuth('negocio', { metodo: 'PUT', dados: { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim(), disponibilidade: disponibilidadeAtual() } });
+      informar('status_negocio', out.sucesso ? mensagem : (out.erro || 'Não foi possível salvar.'));
+      informar('status_horarios', out.sucesso ? mensagem : (out.erro || 'Não foi possível salvar.'));
+    }
     function preencherServico(servico) {
       editando = servico ? servico.id : null;
       q('servico_nome').value = servico?.nome || '';
@@ -63,7 +98,7 @@
       if (!(await exigirLogin('login-empresa.html'))) return;
       const atual = await usuarioAtual();
       if (!atual.sucesso || atual.usuario.tipo !== 'empresa') { window.location.replace('painel-prestador.html'); return; }
-      const u = atual.usuario; negocioId = u.id; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || '';
+      const u = atual.usuario; negocioId = u.id; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || ''; preencherDisponibilidade(u.disponibilidade);
       carregarServicos();
     }
     q('compartilhar_negocio').addEventListener('click', async () => {
@@ -78,7 +113,8 @@
         if (erro.name !== 'AbortError') { try { await navigator.clipboard.writeText(url); toast('Link do perfil copiado!', 'sucesso'); } catch (_) { window.prompt('Copie o link do seu perfil:', url); } }
       }
     });
-    q('form_negocio').addEventListener('submit', async (e) => { e.preventDefault(); const out = await chamarAuth('negocio', { metodo: 'PUT', dados: { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim() } }); informar('status_negocio', out.sucesso ? 'Perfil atualizado.' : (out.erro || 'Não foi possível salvar.')); });
+    q('form_negocio').addEventListener('submit', async (e) => { e.preventDefault(); await salvarPerfil('Perfil e horários atualizados.'); });
+    q('horarios_form').addEventListener('submit', async (e) => { e.preventDefault(); await salvarPerfil('Horários de atendimento salvos.'); });
     formServico.addEventListener('submit', async (e) => { e.preventDefault(); const dados = { nome: q('servico_nome').value.trim(), descricao: q('servico_descricao').value.trim(), duracao_min: q('servico_duracao').value || null, preco: q('servico_preco').value || null }; const out = editando ? await atualizarServico(editando, dados) : await criarServico(dados); if (!out.sucesso) { toast(out.erro || 'Não foi possível salvar.', 'erro'); return; } preencherServico(null); carregarServicos(); });
     q('cancelar_edicao').onclick = () => preencherServico(null);
     iniciar();

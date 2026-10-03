@@ -62,14 +62,7 @@
         <input type="date" id="txt_data" name="data" required>
         <h3>Horários disponíveis</h3>
         <p id="aviso_vagas" class="aviso-vagas"></p>
-        <div class="slots-grid" id="grade_horarios">
-          <label class="slot-pill"><input type="radio" name="horario" value="09:00" required>09:00</label>
-          <label class="slot-pill"><input type="radio" name="horario" value="10:00">10:00</label>
-          <label class="slot-pill"><input type="radio" name="horario" value="11:30">11:30</label>
-          <label class="slot-pill"><input type="radio" name="horario" value="14:00">14:00</label>
-          <label class="slot-pill"><input type="radio" name="horario" value="15:30">15:30</label>
-          <label class="slot-pill"><input type="radio" name="horario" value="16:30">16:30</label>
-        </div>
+        <div class="slots-grid" id="grade_horarios" aria-live="polite"></div>
       </section>
 
       <button type="submit" id="btn_confirmar_agendamento">Confirmar agendamento</button>
@@ -95,8 +88,9 @@
       prestador = r.sucesso ? r.dados.find((p) => String(p.id) === String(prestadorId)) : null;
       document.getElementById('nome_prestador').textContent = prestador ? prestador.nome : 'Prestador não encontrado';
       radios.replaceChildren();
-      (prestador?.servicos || []).forEach((s, i) => { const label = document.createElement('label'); label.className = 'servico-card'; const input = document.createElement('input'); input.type = 'radio'; input.name = 'servico'; input.value = s.nome; input.required = true; if (!i) input.checked = true; const nome = document.createElement('span'); nome.className = 's-nome'; nome.textContent = s.nome; const info = document.createElement('span'); info.className = 's-detalhe'; info.textContent = s.duracao_min ? `${s.duracao_min} min` : ''; const preco = document.createElement('span'); preco.className = 's-preco'; preco.textContent = s.preco == null ? 'Preço a combinar' : `R$ ${Number(s.preco).toFixed(2).replace('.', ',')}`; label.append(input, nome, info, preco); radios.append(label); });
+      (prestador?.servicos || []).forEach((s, i) => { const label = document.createElement('label'); label.className = 'servico-card'; const input = document.createElement('input'); input.type = 'radio'; input.name = 'servico'; input.value = s.nome; input.required = true; if (!i) input.checked = true; input.addEventListener('change', atualizarVagas); const nome = document.createElement('span'); nome.className = 's-nome'; nome.textContent = s.nome; const info = document.createElement('span'); info.className = 's-detalhe'; info.textContent = s.duracao_min ? `${s.duracao_min} min` : ''; const preco = document.createElement('span'); preco.className = 's-preco'; preco.textContent = s.preco == null ? 'Preço a combinar' : `R$ ${Number(s.preco).toFixed(2).replace('.', ',')}`; label.append(input, nome, info, preco); radios.append(label); });
       if (!prestador?.servicos?.length) radios.textContent = 'Este prestador não possui serviços disponíveis.';
+      atualizarVagas();
     };
     carregaPrestador();
     // Data mínima = hoje (evita erro "datas passadas" do backend)
@@ -109,34 +103,53 @@
     const dataParam = new URLSearchParams(window.location.search).get('data');
     campoData.value = (dataParam && dataParam >= hoje) ? dataParam : hoje;
 
-    // Marca horários ocupados consultando o backend
+    // Gera horários a partir do expediente definido pelo prestador e respeita duração e conflitos.
     async function atualizarVagas() {
       const aviso = document.getElementById('aviso_vagas');
-      const radios = [...form.querySelectorAll('input[name="horario"]')];
-      radios.forEach((r) => { r.disabled = false; });
+      const grade = document.getElementById('grade_horarios');
+      grade.replaceChildren();
       aviso.className = 'aviso-vagas';
 
       const data = campoData.value;
       if (!data) { aviso.textContent = ''; return; }
+      if (!prestador) { aviso.textContent = 'Carregando a agenda do prestador…'; return; }
+      const dia = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][new Date(`${data}T12:00:00`).getDay()];
+      const disponibilidade = prestador.disponibilidade || {};
+      const expediente = disponibilidade[dia];
+      if (!expediente?.ativo) { aviso.textContent = 'Esse prestador não atende neste dia.'; return; }
+      const servicoEscolhido = form.querySelector('input[name="servico"]:checked');
+      const servico = (prestador.servicos || []).find((s) => s.nome === servicoEscolhido?.value);
+      if (!servico) { aviso.textContent = 'Escolha um serviço para ver os horários.'; return; }
+      const emMinutos = (hora) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5));
+      const formatarHora = (minutos) => `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`;
+      const inicio = emMinutos(expediente.inicio);
+      const fim = emMinutos(expediente.fim);
+      const intervalo = Number(disponibilidade.intervalo_min || 30);
+      const duracao = Number(servico.duracao_min || intervalo);
+      const horarios = [];
+      for (let minuto = inicio; minuto + duracao <= fim; minuto += intervalo) horarios.push(formatarHora(minuto));
+      if (!horarios.length) { aviso.textContent = 'Não há horários para esse serviço neste dia.'; return; }
       aviso.textContent = 'Verificando horários...';
       const r = await buscarAgendamentosPorData(data, prestadorId);
       if (!r.sucesso) {
         aviso.textContent = 'Não foi possível verificar vagas: ' + r.erro;
         return;
       }
-      const ocupados = new Set(r.dados.map((a) => a.horario));
+      const ocupados = r.dados.map((a) => ({ inicio: emMinutos(a.horario), fim: emMinutos(a.horario) + Number(a.duracao_min || 30) }));
       let livres = 0;
-      radios.forEach((radio) => {
-        if (ocupados.has(radio.value)) {
-          radio.disabled = true;
-          if (radio.checked) radio.checked = false;
-        } else livres++;
+      horarios.forEach((hora, i) => {
+        const minuto = emMinutos(hora);
+        const bloqueado = ocupados.some((a) => minuto < a.fim && a.inicio < minuto + duracao);
+        const label = document.createElement('label'); label.className = 'slot-pill';
+        const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'horario'; radio.value = hora; radio.required = i === 0; radio.disabled = bloqueado;
+        const texto = document.createTextNode(hora); label.append(radio, texto); grade.append(label);
+        if (!bloqueado) livres++;
       });
       if (livres === 0) {
-        aviso.textContent = 'Todos os horários deste dia estão ocupados. Escolha outra data.';
+        aviso.textContent = 'Não há horários livres para esse serviço. Escolha outro dia.';
         aviso.classList.add('aviso');
       } else {
-        aviso.textContent = livres + ' de ' + radios.length + ' horários livres em ' + data.split('-').reverse().join('/') + '.';
+        aviso.textContent = `${livres} horários livres · ${expediente.inicio} às ${expediente.fim} · ${duracao} min`;
         aviso.classList.add('ok');
       }
     }
