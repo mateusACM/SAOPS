@@ -8,11 +8,11 @@
 [![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
-[![Deploy](https://img.shields.io/badge/Render-live-46E3B7?logo=render&logoColor=white)](https://saops.onrender.com/)
+[![Deploy](https://img.shields.io/badge/Render-live-46E3B7?logo=render&logoColor=white)](https://saops-zjyx.onrender.com/)
 [![Licença](https://img.shields.io/badge/Licen%C3%A7a-MIT-green)](LICENSE)
 [![PRs](https://img.shields.io/badge/PRs-bem--vindos-brightgreen)](https://github.com/nicolaskmazzini-coder/SAOPS-new/pulls)
 
-[🌐 Demonstração ao vivo](https://saops.onrender.com/) · [📖 Diagramas](DIAGRAMAS.md) · [🐛 Issues](https://github.com/nicolaskmazzini-coder/SAOPS-new/issues)
+[🌐 Demonstração ao vivo](https://saops-zjyx.onrender.com/) · [📖 Diagramas](DIAGRAMAS.md) · [🐛 Issues](https://github.com/nicolaskmazzini-coder/SAOPS-new/issues)
 
 </div>
 
@@ -99,7 +99,7 @@ SAOPS/
 
 ## 🔌 API
 
-Base: `https://saops.onrender.com`
+Base: `https://saops-zjyx.onrender.com`
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
@@ -123,7 +123,7 @@ Base: `https://saops.onrender.com`
 Exemplo:
 
 ```bash
-curl https://saops.onrender.com/api/status
+curl https://saops-zjyx.onrender.com/api/status
 # {"status":"ok","mensagem":"SAOPS ativo."}
 ```
 

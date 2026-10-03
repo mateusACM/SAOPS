@@ -1,6 +1,6 @@
 # Explicação das Mudanças no Projeto
 
-Histórico completo do que foi feito no **SAOPS** (Sistema de Agendamento) — do TCC original ao sistema atual em produção: https://saops.onrender.com/
+Histórico completo do que foi feito no **SAOPS** (Sistema de Agendamento) — do TCC original ao sistema atual em produção: https://saops-zjyx.onrender.com/
 
 > Repositório: https://github.com/nicolaskmazzini-coder/SAOPS-new · Licença MIT · Documentação técnica em `DIAGRAMAS.md`, `ARQUITETURA.md` e `README.md`.
 
@@ -52,7 +52,7 @@ O projeto nasceu como TCC de agendamento (`364c3bc`, mar/2026): API Express + SQ
 ## 5. Rename PGENFMA → SAOPS
 
 **Por quê:** novo nome do sistema.
-**O que foi feito** (`7232fd8` — 25/set): troca global em 28 arquivos (títulos, marca, chaves `saops_*`, cookie, pacote, README, `render.yaml` com `name: saops`), repo renomeado pra `SAOPS` (antigo vira 301) e **URL nova `saops.onrender.com`** criada via Blueprint (serviço antigo deletado depois, zero downtime).
+**O que foi feito** (`7232fd8` — 25/set): troca global em 28 arquivos (títulos, marca, chaves `saops_*`, cookie, pacote, README, `render.yaml` com `name: saops`), repo renomeado pra `SAOPS` (antigo vira 301) e **URL nova `saops-zjyx.onrender.com`** criada via Blueprint (serviço antigo deletado depois, zero downtime).
 
 ## 6. Logos
 
@@ -100,7 +100,7 @@ Decisão do usuário na Fase 4: CRUD continua público? **Não — proteger com 
 
 ## 14. Estado atual e pendências
 
-**No ar:** https://saops.onrender.com/ — 18 páginas, auth local + social (quando configurado), 24 endpoints, tudo verificado em produção a cada entrega.
+**No ar:** https://saops-zjyx.onrender.com/ — 18 páginas, auth local + social (quando configurado), 24 endpoints, tudo verificado em produção a cada entrega.
 
 **Falta (ações do usuário):** criar os apps OAuth (Google/Azure) e setar `GOOGLE_CLIENT_ID`/`MICROSOFT_CLIENT_ID` no Render · clicar **Verificar** no Search Console + enviar o sitemap · deletar o serviço `pgenfma` antigo (se ainda existir).
 
