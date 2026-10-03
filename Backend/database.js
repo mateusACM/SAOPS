@@ -1,48 +1,62 @@
-// Importa a biblioteca do SQLite
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+// Banco PostgreSQL (Supabase) — troca o SQLite efêmero do Render
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+const { Pool, types } = require('pg');
 
-// Usa caminho absoluto para não criar 2 bancos (raiz vs Backend/)
-const dbPath = path.join(__dirname, 'agendamento.db');
+// BIGINT (ids) volta como número nas respostas JSON, igual ao SQLite
+types.setTypeParser(20, (v) => parseInt(v, 10));
 
-// Cria/conecta no banco de dados (arquivo agendamento.db)
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error(' Erro ao conectar no banco:', err.message);
-    } else {
-        console.log(' Conectado ao banco de dados SQLite');
-        // Chaves estrangeiras precisam deste PRAGMA por conexão
-        db.run('PRAGMA foreign_keys = ON');
-    }
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+    console.error(' Faltou DATABASE_URL (PostgreSQL/Supabase). Configure em Backend/.env (local) e no Render.');
+    process.exit(1);
+}
+
+const pool = new Pool({
+    connectionString: DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 10
 });
 
-// Cria as tabelas (se não existirem)
-const tabelas = `
-    CREATE TABLE IF NOT EXISTS agendamentos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+pool.on('error', (e) => console.error(' Erro no pool PostgreSQL:', e.message));
+
+// Helpers async — mesma semântica das antigas get/all/run do sqlite3
+async function q(sql, params = []) {
+    return pool.query(sql, params); // .rows / .rowCount (INSERT/UPDATE/DELETE com RETURNING devolve rows)
+}
+
+async function qGet(sql, params = []) {
+    const r = await pool.query(sql, params);
+    return r.rows[0]; // undefined quando não achou (igual ao db.get)
+}
+
+async function qAll(sql, params = []) {
+    const r = await pool.query(sql, params);
+    return r.rows;
+}
+
+// "Agora" em UTC no mesmo formato do antigo datetime('now') do SQLite
+const AGORA_SQL = `to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS')`;
+
+const SCHEMA = [
+    `CREATE TABLE IF NOT EXISTS agendamentos (
+        id BIGSERIAL PRIMARY KEY,
         nome_cliente TEXT NOT NULL,
         servico TEXT NOT NULL,
         data TEXT NOT NULL,
         horario TEXT NOT NULL,
         telefone TEXT,
         status TEXT DEFAULT 'agendado'
-    )
-`;
-
-const tabelaTarefas = `
-    CREATE TABLE IF NOT EXISTS tarefas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    )`,
+    `CREATE TABLE IF NOT EXISTS tarefas (
+        id BIGSERIAL PRIMARY KEY,
         titulo TEXT NOT NULL,
         data TEXT NOT NULL,
         hora TEXT,
         categoria TEXT DEFAULT 'pessoal',
         concluido INTEGER DEFAULT 0
-    )
-`;
-
-const tabelaUsuarios = `
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    )`,
+    `CREATE TABLE IF NOT EXISTS usuarios (
+        id BIGSERIAL PRIMARY KEY,
         nome TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         senha_hash TEXT,
@@ -51,70 +65,51 @@ const tabelaUsuarios = `
         provider TEXT NOT NULL DEFAULT 'local',
         provider_id TEXT,
         foto TEXT,
-        criado_em TEXT DEFAULT (datetime('now'))
-    )
-`;
-
-const tabelaSessoes = `
-    CREATE TABLE IF NOT EXISTS sessoes (
+        criado_em TEXT DEFAULT (to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS sessoes (
         token TEXT PRIMARY KEY,
-        usuario_id INTEGER NOT NULL,
-        criado_em TEXT DEFAULT (datetime('now')),
-        expira_em TEXT NOT NULL,
-        FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE)
-`;
-
-const tabelaServicos = `
-    CREATE TABLE IF NOT EXISTS servicos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario_id INTEGER NOT NULL,
+        usuario_id BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        criado_em TEXT DEFAULT (to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS')),
+        expira_em TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS servicos (
+        id BIGSERIAL PRIMARY KEY,
+        usuario_id BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
         nome TEXT NOT NULL,
         descricao TEXT,
-        preco REAL,
+        preco DOUBLE PRECISION,
         duracao_min INTEGER,
-        criado_em TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE)
-`;
+        criado_em TEXT DEFAULT (to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS'))
+    )`,
+    // Impede double-booking mesmo em escritas concorrentes
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_ag_data_horario ON agendamentos(data, horario)`,
+    `CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes(expira_em)`,
+    `CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)`
+];
 
-db.serialize(() => {
-    db.run(tabelas, (err) => {
-        if (err) console.error(' Erro ao criar tabela:', err.message);
-        else console.log(' Tabela "agendamentos" pronta!');
-    });
-    db.run(tabelaTarefas, (err) => {
-        if (err) console.error(' Erro ao criar tabela:', err.message);
-        else console.log(' Tabela "tarefas" pronta!');
-    });
-    db.run(tabelaUsuarios, (err) => {
-        if (err) console.error(' Erro ao criar tabela:', err.message);
-        else console.log(' Tabela "usuarios" pronta!');
-    });
-    db.run(tabelaSessoes, (err) => {
-        if (err) console.error(' Erro ao criar tabela:', err.message);
-        else {
-            console.log(' Tabela "sessoes" pronta!');
-            // Limpa sessões expiradas
-            db.run("DELETE FROM sessoes WHERE expira_em < datetime('now')");
-        }
-    });
-    db.run(tabelaServicos, (err) => {
-        if (err) console.error(' Erro ao criar tabela:', err.message);
-        else console.log(' Tabela "servicos" pronta!');
-    });
-    // Impede double-booking mesmo em escritas concorrentes (vale para
-    // bancos já existentes; se houver duplicatas antigas, só avisa)
-    db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_ag_data_horario ON agendamentos(data, horario)', (err) => {
-        if (err) console.error(' Aviso: índice único data+horario não criado:', err.message);
-        else console.log(' Índice único data+horario pronto!');
-    });
-    db.run('CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes(expira_em)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)');
-});
+async function limparSessoes() {
+    try {
+        await q(`DELETE FROM sessoes WHERE expira_em < ${AGORA_SQL}`);
+    } catch (e) {
+        console.error(' Erro ao limpar sessões expiradas:', e.message);
+    }
+}
 
-// Limpa sessões expiradas a cada hora (não só no boot)
-setInterval(() => {
-    db.run("DELETE FROM sessoes WHERE expira_em < datetime('now')");
-}, 60 * 60 * 1000);
+async function iniciar() {
+    try {
+        await pool.query(`SELECT 1`); // teste de conexão (falha rápido se a URL estiver errada)
+        for (const sql of SCHEMA) await pool.query(sql);
+        console.log(' Conectado ao PostgreSQL (Supabase)');
+        console.log(' Tabelas e índices prontos!');
+        await limparSessoes();
+        setInterval(limparSessoes, 60 * 60 * 1000); // limpa sessões expiradas de hora em hora
+    } catch (e) {
+        console.error(' Erro ao iniciar o PostgreSQL:', e.message);
+        process.exit(1);
+    }
+}
 
-// Exporta o banco para usar em outros arquivos
-module.exports = db;
+iniciar();
+
+module.exports = { q, qGet, qAll, pool, AGORA_SQL };
