@@ -111,11 +111,30 @@ app.get('/api/status', (req, res) => {
     res.json({ status: 'ok', mensagem: 'SAOPS ativo.' });
 });
 
+// Vitrine de prestadores e respectivos serviços cadastrados.
+app.get('/api/prestadores', async (req, res) => {
+    try {
+        const rows = await qAll(
+            `SELECT u.id, u.nome, u.categoria, u.endereco, s.id AS servico_id,
+                    s.nome AS servico_nome, s.descricao, s.preco, s.duracao_min
+             FROM usuarios u LEFT JOIN servicos s ON s.usuario_id = u.id
+             WHERE u.tipo = 'empresa' ORDER BY u.nome, s.nome`
+        );
+        const porId = new Map();
+        for (const row of rows) {
+            if (!porId.has(row.id)) porId.set(row.id, { id: row.id, nome: row.nome, categoria: row.categoria, endereco: row.endereco, servicos: [] });
+            if (row.servico_id !== null) porId.get(row.id).servicos.push({ id: row.servico_id, nome: row.servico_nome, descricao: row.descricao, preco: row.preco, duracao_min: row.duracao_min });
+        }
+        const prestadores = [...porId.values()];
+        res.json({ total: prestadores.length, prestadores });
+    } catch (e) { erro500(res, e); }
+});
+
 // ========================================
 // CREATE - Criar novo agendamento (COM VALIDAÇÕES!)
 // ========================================
 app.post('/agendamentos', exigirLogin, async (req, res) => {
-    const { nome_cliente, servico, data, horario, telefone, status } = req.body;
+    const { nome_cliente, servico, data, horario, telefone, status, prestador_id } = req.body;
 
     // VALIDAÇÃO 1: Campos obrigatórios
     if (!nome_cliente || !servico || !data || !horario) {
@@ -169,7 +188,13 @@ app.post('/agendamentos', exigirLogin, async (req, res) => {
 
     // VALIDAÇÃO 7: Verificar se já existe agendamento no mesmo horário
     try {
-        const existente = await qGet('SELECT * FROM agendamentos WHERE data = $1 AND horario = $2', [data, horario]);
+        const prestadorId = Number(prestador_id);
+        if (!Number.isSafeInteger(prestadorId) || prestadorId <= 0) return res.status(400).json({ erro: 'Escolha um prestador válido.' });
+        const prestador = await qGet("SELECT id FROM usuarios WHERE id = $1 AND tipo = 'empresa'", [prestadorId]);
+        if (!prestador) return res.status(404).json({ erro: 'Prestador não encontrado.' });
+        const servicoValido = await qGet('SELECT id FROM servicos WHERE usuario_id = $1 AND nome = $2', [prestadorId, String(servico).trim()]);
+        if (!servicoValido) return res.status(400).json({ erro: 'Escolha um serviço deste prestador.' });
+        const existente = await qGet('SELECT * FROM agendamentos WHERE prestador_id = $1 AND data = $2 AND horario = $3', [prestadorId, data, horario]);
 
         if (existente) {
             return res.status(409).json({
@@ -178,10 +203,10 @@ app.post('/agendamentos', exigirLogin, async (req, res) => {
         }
 
         // Se passou em todas as validações, insere no banco
-        const sql = `INSERT INTO agendamentos (nome_cliente, servico, data, horario, telefone, status, usuario_id)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`;
+        const sql = `INSERT INTO agendamentos (nome_cliente, servico, data, horario, telefone, status, usuario_id, prestador_id)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`;
 
-        const criado = await q(sql, [String(nome_cliente).trim(), String(servico).trim(), data, horario, telefone || null, statusFinal, req.usuario.id]);
+        const criado = await q(sql, [String(nome_cliente).trim(), String(servico).trim(), data, horario, telefone || null, statusFinal, req.usuario.id, prestadorId]);
         res.status(201).json({ 
             mensagem: ' Agendamento criado com sucesso!',
             id: criado.rows[0].id,
@@ -206,7 +231,7 @@ app.post('/agendamentos', exigirLogin, async (req, res) => {
 
 // READ - Listar todos os agendamentos
 
-app.get('/agendamentos', async (req, res) => {
+app.get('/agendamentos', exigirLogin, async (req, res) => {
     // PEGAR OS PARÂMETROS DA URL
     const sort = req.query.sort || 'id';      // Padrão: ordenar por ID
     const order = req.query.order || 'asc';   // Padrão: crescente
@@ -228,11 +253,12 @@ app.get('/agendamentos', async (req, res) => {
     }
 
     // MONTAR A QUERY COM ORDENAÇÃO
-    const query = `SELECT * FROM agendamentos ORDER BY ${sort} ${order.toUpperCase()}`;
+    const donoCampo = req.usuario.tipo === 'empresa' ? 'prestador_id' : 'usuario_id';
+    const query = `SELECT * FROM agendamentos WHERE ${donoCampo} = $1 ORDER BY ${sort} ${order.toUpperCase()}`;
 
     // EXECUTAR A QUERY
     try {
-        const rows = await qAll(query);
+        const rows = await qAll(query, [req.usuario.id]);
         res.json({
             mensagem: ' Lista de agendamentos',
             total: rows.length,
@@ -244,7 +270,7 @@ app.get('/agendamentos', async (req, res) => {
 });
 
 // ROTA NOVA: Ordenação por parâmetros na URL 
-app.get('/agendamentos/sorted/:field/:order', async (req, res) => {
+app.get('/agendamentos/sorted/:field/:order', exigirLogin, async (req, res) => {
     // PEGAR OS PARÂMETROS DA URL
     const field = req.params.field;    // Ex: horario, nome_cliente, data
     const order = req.params.order;    // Ex: asc, desc
@@ -266,11 +292,12 @@ app.get('/agendamentos/sorted/:field/:order', async (req, res) => {
     }
 
     // MONTAR A QUERY COM ORDENAÇÃO
-    const query = `SELECT * FROM agendamentos ORDER BY ${field} ${order.toUpperCase()}`;
+    const donoCampo = req.usuario.tipo === 'empresa' ? 'prestador_id' : 'usuario_id';
+    const query = `SELECT * FROM agendamentos WHERE ${donoCampo} = $1 ORDER BY ${field} ${order.toUpperCase()}`;
 
     // EXECUTAR A QUERY
     try {
-        const rows = await qAll(query);
+        const rows = await qAll(query, [req.usuario.id]);
         res.json({
             mensagem: ' Lista ordenada de agendamentos',
             total: rows.length,
@@ -284,14 +311,21 @@ app.get('/agendamentos/sorted/:field/:order', async (req, res) => {
 // READ - Meus agendamentos (só os da conta logada)
 // Precisa vir ANTES de /agendamentos/:id senão "meus" vira um id
 
+app.get('/agendamentos/prestador', exigirLogin, async (req, res) => {
+    if (req.usuario.tipo !== 'empresa') return res.status(403).json({ erro: 'Acesso exclusivo do prestador.' });
+    try {
+        const rows = await qAll('SELECT * FROM agendamentos WHERE prestador_id = $1 ORDER BY data, horario', [req.usuario.id]);
+        res.json({ total: rows.length, agendamentos: rows });
+    } catch (e) { erro500(res, e); }
+});
+
 app.get('/agendamentos/meus', exigirLogin, async (req, res) => {
     try {
-        const nome = String(req.usuario.nome || '').trim();
-        const rows = await qAll(
+            const rows = await qAll(
             `SELECT * FROM agendamentos
-             WHERE usuario_id = $1 OR lower(nome_cliente) = lower($2)
+             WHERE usuario_id = $1
              ORDER BY data, horario`,
-            [req.usuario.id, nome]
+            [req.usuario.id]
         );
         res.json({
             mensagem: ' Meus agendamentos',
@@ -303,11 +337,11 @@ app.get('/agendamentos/meus', exigirLogin, async (req, res) => {
 
 // READ - Buscar agendamento por ID
 
-app.get('/agendamentos/:id', async (req, res) => {
+app.get('/agendamentos/:id', exigirLogin, async (req, res) => {
     const { id } = req.params;
     if (idInvalido(id)) return res.status(404).json({ erro: 'Agendamento não encontrado' });
     try {
-        const row = await qGet('SELECT * FROM agendamentos WHERE id = $1', [id]);
+        const row = await qGet('SELECT * FROM agendamentos WHERE id = $1 AND (usuario_id = $2 OR prestador_id = $2)', [id, req.usuario.id]);
         if (!row) {
             return res.status(404).json({ erro: 'Agendamento não encontrado' });
         }
@@ -328,7 +362,10 @@ app.get('/agendamentos/data/:data', async (req, res) => {
     }
     
     try {
-        const rows = await qAll('SELECT * FROM agendamentos WHERE data = $1 ORDER BY horario', [data]);
+        const prestadorId = Number(req.query.prestador_id);
+        const rows = Number.isSafeInteger(prestadorId) && prestadorId > 0
+            ? await qAll('SELECT horario FROM agendamentos WHERE data = $1 AND prestador_id = $2 ORDER BY horario', [data, prestadorId])
+            : await qAll('SELECT horario FROM agendamentos WHERE data = $1 ORDER BY horario', [data]);
         res.json({
             mensagem: ` Agendamentos para ${data}`,
             total: rows.length,
@@ -385,7 +422,7 @@ app.put('/agendamentos/:id', exigirLogin, async (req, res) => {
     // Busca o registro atual: data passada só pode mudar de status,
     // e a checagem de conflito só importa se dia/horário mudaram
     try {
-        const atual = await qGet('SELECT data, horario FROM agendamentos WHERE id = $1', [id]);
+        const atual = await qGet('SELECT data, horario, prestador_id, usuario_id FROM agendamentos WHERE id = $1 AND (usuario_id = $2 OR prestador_id = $2)', [id, req.usuario.id]);
         if (!atual) {
             return res.status(404).json({ erro: 'Agendamento não encontrado' });
         }
@@ -400,8 +437,8 @@ app.put('/agendamentos/:id', exigirLogin, async (req, res) => {
         // Verifica se já existe outro agendamento no mesmo horário (exceto o próprio)
         if (mudouQuando) {
             const conflito = await qGet(
-                'SELECT * FROM agendamentos WHERE data = $1 AND horario = $2 AND id != $3',
-                [data, horario, id]
+                'SELECT * FROM agendamentos WHERE prestador_id = $1 AND data = $2 AND horario = $3 AND id != $4',
+                [atual.prestador_id, data, horario, id]
             );
             if (conflito) {
                 return res.status(409).json({
@@ -412,9 +449,10 @@ app.put('/agendamentos/:id', exigirLogin, async (req, res) => {
 
         const sql = `UPDATE agendamentos
                      SET nome_cliente = $1, servico = $2, data = $3, horario = $4, telefone = $5, status = $6
-                     WHERE id = $7`;
+                     WHERE id = $7 AND (usuario_id = $8 OR prestador_id = $8)`;
 
-        await q(sql, [nome_cliente, servico, data, horario, telefone || null, statusFinal, id]);
+        const atualizado = await q(sql, [nome_cliente, servico, data, horario, telefone || null, statusFinal, id, req.usuario.id]);
+        if (!atualizado.rowCount) return res.status(404).json({ erro: 'Agendamento não encontrado' });
         res.json({
             mensagem: ' Agendamento atualizado com sucesso!',
             detalhes: {
@@ -441,7 +479,7 @@ app.delete('/agendamentos/:id', exigirLogin, async (req, res) => {
     const { id } = req.params;
     if (idInvalido(id)) return res.status(404).json({ erro: 'Agendamento não encontrado' });
     try {
-        const r = await q('DELETE FROM agendamentos WHERE id = $1', [id]);
+        const r = await q('DELETE FROM agendamentos WHERE id = $1 AND (usuario_id = $2 OR prestador_id = $2)', [id, req.usuario.id]);
         if (r.rowCount === 0) {
             return res.status(404).json({ erro: 'Agendamento não encontrado' });
         }
@@ -460,14 +498,15 @@ app.delete('/agendamentos/:id', exigirLogin, async (req, res) => {
 const CATEGORIAS_TAREFA = ['pessoal', 'casa', 'trabalho', 'estudos', 'saude', 'outro'];
 
 // LISTAR tarefas (opcional ?data= e ?concluido=0|1)
-app.get('/tarefas', async (req, res) => {
+// Só as tarefas pertencentes à sessão atual
+app.get('/api/tarefas', exigirLogin, async (req, res) => {
     const { data, concluido } = req.query;
     if (data && !validarData(data)) {
         return res.status(400).json({ erro: 'Formato de data inválido. Use YYYY-MM-DD' });
     }
 
-    const filtros = [];
-    const params = [];
+    const filtros = [`usuario_id = $${1}`];
+    const params = [req.usuario.id];
     if (data) { filtros.push(`data = $${params.length + 1}`); params.push(data); }
     if (concluido === '0' || concluido === '1') { filtros.push(`concluido = $${params.length + 1}`); params.push(Number(concluido)); }
 
@@ -481,18 +520,18 @@ app.get('/tarefas', async (req, res) => {
     } catch (e) { erro500(res, e); }
 });
 
-// BUSCAR tarefa por ID
-app.get('/tarefas/:id', async (req, res) => {
+// BUSCAR tarefa por ID (somente o dono)
+app.get('/api/tarefas/:id', exigirLogin, async (req, res) => {
     if (idInvalido(req.params.id)) return res.status(404).json({ erro: 'Tarefa não encontrada' });
     try {
-        const row = await qGet('SELECT * FROM tarefas WHERE id = $1', [req.params.id]);
+        const row = await qGet('SELECT * FROM tarefas WHERE id = $1 AND usuario_id = $2', [req.params.id, req.usuario.id]);
         if (!row) return res.status(404).json({ erro: 'Tarefa não encontrada' });
         res.json(row);
     } catch (e) { erro500(res, e); }
 });
 
 // CRIAR tarefa
-app.post('/tarefas', exigirLogin, async (req, res) => {
+app.post('/api/tarefas', exigirLogin, async (req, res) => {
     const { titulo, data, hora, categoria } = req.body;
 
     if (!titulo || !String(titulo).trim()) {
@@ -512,9 +551,9 @@ app.post('/tarefas', exigirLogin, async (req, res) => {
         return res.status(400).json({ erro: `Categoria inválida. Use: ${CATEGORIAS_TAREFA.join(', ')}` });
     }
 
-    const sql = 'INSERT INTO tarefas (titulo, data, hora, categoria) VALUES ($1, $2, $3, $4) RETURNING id';
+    const sql = 'INSERT INTO tarefas (titulo, data, hora, categoria, usuario_id) VALUES ($1, $2, $3, $4, $5) RETURNING id';
     try {
-        const criado = await q(sql, [String(titulo).trim(), data, hora || null, cat]);
+        const criado = await q(sql, [String(titulo).trim(), data, hora || null, cat, req.usuario.id]);
         res.status(201).json({
             mensagem: ' Tarefa criada com sucesso!',
             id: criado.rows[0].id,
@@ -523,14 +562,14 @@ app.post('/tarefas', exigirLogin, async (req, res) => {
     } catch (e) { erro500(res, e); }
 });
 
-// ATUALIZAR tarefa (título, data, hora, categoria, concluido)
-app.put('/tarefas/:id', exigirLogin, async (req, res) => {
+// ATUALIZAR tarefa (somente o dono)
+app.put('/api/tarefas/:id', exigirLogin, async (req, res) => {
     const { id } = req.params;
     const { titulo, data, hora, categoria, concluido } = req.body;
     if (idInvalido(id)) return res.status(404).json({ erro: 'Tarefa não encontrada' });
 
     try {
-        const row = await qGet('SELECT * FROM tarefas WHERE id = $1', [id]);
+        const row = await qGet('SELECT * FROM tarefas WHERE id = $1 AND usuario_id = $2', [id, req.usuario.id]);
         if (!row) return res.status(404).json({ erro: 'Tarefa não encontrada' });
 
         const novoTitulo = titulo === undefined ? row.titulo : String(titulo).trim();
@@ -546,8 +585,8 @@ app.put('/tarefas/:id', exigirLogin, async (req, res) => {
             return res.status(400).json({ erro: `Categoria inválida. Use: ${CATEGORIAS_TAREFA.join(', ')}` });
         }
 
-        const sql = `UPDATE tarefas SET titulo = $1, data = $2, hora = $3, categoria = $4, concluido = $5 WHERE id = $6`;
-        await q(sql, [novoTitulo, novaData, novaHora, novaCat, novoConcluido, id]);
+        const sql = `UPDATE tarefas SET titulo = $1, data = $2, hora = $3, categoria = $4, concluido = $5 WHERE id = $6 AND usuario_id = $7`;
+        await q(sql, [novoTitulo, novaData, novaHora, novaCat, novoConcluido, id, req.usuario.id]);
         res.json({
             mensagem: ' Tarefa atualizada com sucesso!',
             detalhes: { id, titulo: novoTitulo, data: novaData, hora: novaHora, categoria: novaCat, concluido: novoConcluido }
@@ -555,11 +594,11 @@ app.put('/tarefas/:id', exigirLogin, async (req, res) => {
     } catch (e) { erro500(res, e); }
 });
 
-// DELETAR tarefa (escrita exige login, como as demais)
-app.delete('/tarefas/:id', exigirLogin, async (req, res) => {
+// DELETAR tarefa (só a minha ou legado sem dono)
+app.delete('/api/tarefas/:id', exigirLogin, async (req, res) => {
     if (idInvalido(req.params.id)) return res.status(404).json({ erro: 'Tarefa não encontrada' });
     try {
-        const r = await q('DELETE FROM tarefas WHERE id = $1', [req.params.id]);
+        const r = await q('DELETE FROM tarefas WHERE id = $1 AND usuario_id = $2', [req.params.id, req.usuario.id]);
         if (r.rowCount === 0) return res.status(404).json({ erro: 'Tarefa não encontrada' });
         res.json({ mensagem: ' Tarefa excluída com sucesso!', id_deletado: req.params.id });
     } catch (e) { erro500(res, e); }
@@ -605,6 +644,7 @@ app.get('/servicos', async (req, res) => {
 
 // LISTAR os meus (dono logado)
 app.get('/servicos/meus', exigirLogin, async (req, res) => {
+    if (req.usuario.tipo !== 'empresa') return res.status(403).json({ erro: 'Acesso exclusivo do prestador.' });
     try {
         const rows = await qAll('SELECT * FROM servicos WHERE usuario_id = $1 ORDER BY nome', [req.usuario.id]);
         res.json({ mensagem: ' Meus serviços', total: rows.length, servicos: rows });
@@ -613,6 +653,7 @@ app.get('/servicos/meus', exigirLogin, async (req, res) => {
 
 // CRIAR (dono = usuário logado)
 app.post('/servicos', exigirLogin, async (req, res) => {
+    if (req.usuario.tipo !== 'empresa') return res.status(403).json({ erro: 'Acesso exclusivo do prestador.' });
     const erro = validarServico(req.body || {});
     if (erro) return res.status(400).json({ erro });
     const n = normalizarServico(req.body);
@@ -631,6 +672,7 @@ app.post('/servicos', exigirLogin, async (req, res) => {
 
 // ATUALIZAR (só o dono; de outro dono dá 404 para não revelar existência)
 app.put('/servicos/:id', exigirLogin, async (req, res) => {
+    if (req.usuario.tipo !== 'empresa') return res.status(403).json({ erro: 'Acesso exclusivo do prestador.' });
     if (idInvalido(req.params.id)) return res.status(404).json({ erro: 'Serviço não encontrado' });
     const erro = validarServico(req.body || {});
     if (erro) return res.status(400).json({ erro });
@@ -647,6 +689,7 @@ app.put('/servicos/:id', exigirLogin, async (req, res) => {
 
 // DELETAR (só o dono)
 app.delete('/servicos/:id', exigirLogin, async (req, res) => {
+    if (req.usuario.tipo !== 'empresa') return res.status(403).json({ erro: 'Acesso exclusivo do prestador.' });
     if (idInvalido(req.params.id)) return res.status(404).json({ erro: 'Serviço não encontrado' });
     try {
         const r = await q('DELETE FROM servicos WHERE id = $1 AND usuario_id = $2', [req.params.id, req.usuario.id]);
@@ -680,7 +723,7 @@ app.use('/agendamentos', (req, res) => {
     res.status(404).json({ erro: 'Rota não encontrada' });
 });
 
-app.use('/tarefas', (req, res) => {
+app.use('/api/tarefas', (req, res) => {
     res.status(404).json({ erro: 'Rota não encontrada' });
 });
 

@@ -6,7 +6,7 @@
   <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
   <meta name="description" content="Gerencie a agenda do seu negócio com filtros por status, data e horário no SAOPS.">
   <meta name="theme-color" content="#03071f">
-  <meta name="robots" content="index, follow">
+  <meta name="robots" content="noindex, follow">
   <link rel="canonical" href="https://saops-zjyx.onrender.com/agenda-prestador">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="SAOPS">
@@ -31,7 +31,7 @@
     <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
     <h1>Sua agenda</h1>
     <a href="painel-prestador.html">Painel</a>
-    <a href="gerenciar-servicos.html">Meus serviços</a>
+    <a href="meu-negocio.html">Meu negócio</a>
     <nav class="topnav">
       <a href="calendario.html">Calendário</a>
       <a href="tarefas.html">Tarefas</a>
@@ -95,9 +95,6 @@
   let base = []; // resultado do fetch (data ou todos); filtros sao client-side
   const statusAtivos = new Set(STATUS_AGENDAMENTO);
 
-  const escapar = (v) => String(v == null ? '' : v).replace(/[&<>"]/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
   function aplicar() {
     const txt = campoTexto.value.trim().toLowerCase();
     const de = campoDe.value;
@@ -134,9 +131,9 @@
     statusLista.textContent = '';
     agendamentos.forEach((a) => {
       const li = document.createElement('li');
-      li.innerHTML = '<div><p>' + escapar(a.nome_cliente) + ' - ' + escapar(a.servico) + '</p>' +
-        '<p class="t-meta">' + escapar(a.data.split('-').reverse().join('/')) + ' às ' + escapar(a.horario) + '</p></div>' +
-        '<span class="badge ' + escapar(a.status) + '">' + escapar(a.status) + '</span>';
+      li.innerHTML = '<div><p>' + esc(a.nome_cliente) + ' - ' + esc(a.servico) + '</p>' +
+        '<p class="t-meta">' + esc(a.data.split('-').reverse().join('/')) + ' às ' + esc(a.horario) + '</p></div>' +
+        '<span class="badge ' + esc(a.status) + '">' + esc(a.status) + '</span>';
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'mini perigo';
@@ -158,11 +155,12 @@
     statusLista.textContent = '';
     contagem.textContent = '\u2026';
     lista.innerHTML = esqueleto(3);
-    const r = data ? await buscarAgendamentosPorData(data) : await listarAgendamentos();
+    const r = await listarAgendamentosPrestador();
+    if (r.sucesso && data) r.dados = r.dados.filter((a) => a.data === data);
     if (!r.sucesso) {
       statusLista.textContent = '';
       contagem.textContent = '—';
-      lista.innerHTML = '<div class="vazio">Erro: ' + escapar(r.erro) + ' — o backend está rodando?</div>';
+      lista.innerHTML = '<div class="vazio">Erro: ' + esc(r.erro) + ' — o backend está rodando?</div>';
       return;
     }
     base = r.dados;

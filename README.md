@@ -37,13 +37,13 @@
 
 | Recurso | Descrição |
 |---|---|
-| 📅 **Agendamentos** | Marcar, cancelar e reagendar horários com validação de conflito (409) e índice único `data+horário` |
+| 📅 **Agendamentos** | Marcar, cancelar e reagendar horários com validação de conflito por prestador (409) e índice único `prestador+data+horário` |
 | 🔍 **Filtros avançados** | Busca por texto, chips de status, período de/até e ordenação na agenda |
 | 🗓️ **Calendário mensal** | Visão dia a dia de agendamentos + tarefas, com semana começando na segunda |
 | ✅ **Tarefas** | Categorias (casa, trabalho, estudos, saúde, pessoal), prazos e conclusão |
 | ✂️ **Serviços do prestador** | CRUD real: nome, descrição, preço e duração — cada dono gerencia os seus |
 | 🔔 **Lembretes** | Aviso no site + notificação do navegador quando faltar pouco pro horário |
-| 🔐 **Login social** | Conta local (e-mail/senha com bcrypt) ou Google/Microsoft via OAuth |
+| 🔐 **Login social** | Conta local (e-mail/senha com bcrypt) ou Google via OAuth |
 | 🌙 **Tema claro/escuro** | Segue o sistema, com alternância manual e sem flash ao carregar |
 | 📱 **PWA + responsivo** | Instalável, funciona bem no celular |
 | 🔎 **SEO + IAs** | Meta/Open Graph, sitemap, `robots.txt`, `llms.txt` e JSON-LD |
@@ -60,18 +60,18 @@
 | Calendário | `/calendario` | Grade mensal + lista do dia com filtros de status |
 | Tarefas | `/tarefas` | CRUD de tarefas *(login)* |
 | Agenda do prestador | `/agenda-prestador` | Gestão com filtros avançados *(login)* |
-| Meus serviços | `/gerenciar-servicos` | CRUD de serviços *(login empresa)* |
+| Meu negócio | `/meu-negocio` | Perfil público e serviços do prestador *(login empresa)* |
 | Perfil | `/perfil` | Dados, foto, agendamentos e notificações |
 | Sobre nós | `/sobre-nos` | Equipe, stack e números do projeto |
 
-*Rotas de escrita (`POST/PUT/DELETE`) exigem sessão — sem login retornam `401`. Leituras (`GET`) são públicas.*
+*Leituras e alterações de dados exigem sessão e retornam apenas registros do usuário ou prestador autenticado. A vitrine e a consulta de horários disponíveis são públicas.*
 
 ---
 
 ## 🛠️ Tecnologias
 
 - **Backend:** Node.js 24 + Express 5 + PostgreSQL (`pg`, Supabase) + `bcryptjs` + `express-rate-limit` + `dotenv`
-- **Frontend:** HTML + CSS + JavaScript puros (sem frameworks), Google Identity Services + MSAL (popup) pro login social
+- **Frontend:** HTML + CSS + JavaScript puros (sem frameworks), Google Identity Services para login social
 - **Infra:** [Render](https://render.com/) (plano gratuito, região Frankfurt) com deploy automático a cada push na `main`
 
 ---
@@ -86,7 +86,7 @@ SAOPS/
 │   ├── database.js    # PostgreSQL (Supabase): agendamentos, tarefas, usuarios, sessoes, servicos
 │   └── package.json
 ├── Frontend/
-│   ├── Paginas/       # 18 páginas + robots.txt, sitemap.xml, llms.txt, manifest
+│   ├── Paginas/       # 19 páginas + robots.txt, sitemap.xml, llms.txt, manifest
 │   ├── js/            # api, ui, tema, lembretes, social, toast, prestadores
 │   ├── CSS/           # Tema Google Agenda (variáveis + modo escuro)
 │   └── img/           # Logo, favicon, og:image e ícones PWA
@@ -104,19 +104,21 @@ Base: `https://saops-zjyx.onrender.com`
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | GET | `/api/status` | — | Saúde do serviço |
-| GET | `/agendamentos` | — | Lista (com `?sort=` e `?order=`) |
-| GET | `/agendamentos/data/:data` | — | Agendamentos do dia |
-| GET | `/agendamentos/:id` | — | Detalhe |
+| GET | `/agendamentos` | 🔒 | Lista os registros da conta (com `?sort=` e `?order=`) |
+| GET | `/agendamentos/data/:data` | — | Horários ocupados (filtra com `?prestador_id=`) |
+| GET | `/agendamentos/:id` | 🔒 | Detalhe de agendamento próprio |
 | POST | `/agendamentos` | 🔒 | Cria (valida conflito → `409`) |
 | PUT | `/agendamentos/:id` | 🔒 | Atualiza (passado só muda status) |
 | DELETE | `/agendamentos/:id` | 🔒 | Remove |
-| GET/POST/PUT/DELETE | `/tarefas`… | GET — / 🔒 resto | CRUD de tarefas (`?data=`, `?concluido=`) |
-| GET | `/servicos` | — | Vitrine (com nome do prestador) |
+| GET/POST/PUT/DELETE | `/api/tarefas`… | 🔒 todas | CRUD de tarefas (`?data=`, `?concluido=`) |
+| GET | `/api/prestadores` | — | Vitrine de prestadores com serviços |
+| GET | `/servicos` | — | Vitrine de serviços (com nome do prestador) |
 | GET | `/servicos/meus` | 🔒 | Serviços do dono logado |
 | POST/PUT/DELETE | `/servicos`… | 🔒 | CRUD (só o dono; alheio dá `404`) |
 | POST | `/api/auth/cadastro` | — | Cria conta (senha 8–72) |
 | POST | `/api/auth/login` | — | E-mail (+ nome do negócio p/ empresa) |
-| POST | `/api/auth/oauth` | — | Google/Microsoft (`id_token` validado) |
+| POST | `/api/auth/oauth` | — | Google (`id_token` validado) |
+| PUT | `/api/auth/negocio` | 🔒 | Atualiza o perfil do prestador logado |
 | POST | `/api/auth/logout` | 🔒 | Encerra a sessão |
 | GET | `/api/auth/eu` | 🔒 | Usuário atual |
 
@@ -142,13 +144,13 @@ PORT=3000 node Backend/server.js
 
 Acesse **http://localhost:3000**. Crie um `.env` em `Backend/` com `DATABASE_URL` (PostgreSQL/Supabase) — as tabelas e índices são criados sozinhos na primeira execução.
 
-Login social local (opcional): acrescente no mesmo `.env` `GOOGLE_CLIENT_ID` e/ou `MICROSOFT_CLIENT_ID` e cadastre `http://localhost:3000` como origem/redirect nos consoles do Google/Azure.
+Login social local (opcional): acrescente no mesmo `.env` `GOOGLE_CLIENT_ID` e cadastre `http://localhost:3000` como origem/redirect no console do Google.
 
 ---
 
 ## ☁️ Deploy
 
-O `render.yaml` na raiz configura o Blueprint: a cada push na `main`, o Render reinstala e reinicia sozinho (~1 min). Variáveis de ambiente no dashboard: `DATABASE_URL` (obrigatória), `NODE_ENV=production`, `GOOGLE_CLIENT_ID`, `MICROSOFT_CLIENT_ID`.
+O `render.yaml` na raiz configura o Blueprint: a cada push na `main`, o Render reinstala e reinicia sozinho (~1 min). Variáveis de ambiente no dashboard: `DATABASE_URL` (obrigatória), `NODE_ENV=production`, `GOOGLE_CLIENT_ID`.
 
 > ⚠️ Plano gratuito: o serviço dorme sem tráfego (~50s pra acordar). Os dados vivem no Supabase (PostgreSQL) e **não zeram mais** a cada deploy.
 
@@ -157,7 +159,7 @@ O `render.yaml` na raiz configura o Blueprint: a cada push na `main`, o Render r
 ## 🔒 Segurança
 
 - Senhas com bcrypt (10 rounds), sessão em cookie `HttpOnly` + `SameSite=Lax` de 7 dias
-- `id_token` do Google validado (`aud`, `iss`, `email_verified`); Microsoft via JWKS/RS256 (`aud`, `iss`, `exp`, `nonce`)
+- `id_token` do Google validado (`aud`, `iss`, `email_verified`)
 - Vínculo de conta por e-mail só com e-mail verificado · `rate-limit` no `/api/auth`
 - Escape de HTML em todas as telas (anti-XSS) · erros internos genéricos · validação de entrada no backend
 

@@ -2,7 +2,7 @@
 
 > SAOPS é um sistema de agendamento online gratuito (TCC) para marcar horários em barbearias, salões, clínicas e outros prestadores. Cliente busca serviços e agenda em segundos; o prestador gerencia a agenda do dia com filtros. Web app em Node.js + PostgreSQL, tema Google Agenda (claro/escuro), 100% em português do Brasil. Em produção em https://saops-zjyx.onrender.com
 
-O SAOPS conecta clientes e prestadores de serviço: o cliente cria a conta gratuita (e-mail, Google ou Microsoft), encontra o serviço, escolhe dia e horário e confirma o agendamento (com opções de cancelar e reagendar); o prestador cadastra serviços e acompanha a agenda com busca por texto, filtros de status (agendado, confirmado, concluído, cancelado) e ordenação. Há lembretes de agendamento, tarefas do dia a dia com categorias, calendário mensal e login local ou social (Google e Microsoft). Os dados são armazenados em PostgreSQL no servidor (tabelas: agendamentos, tarefas, usuarios, sessoes, servicos).
+O SAOPS conecta clientes e prestadores de serviço: o cliente cria a conta gratuita (e-mail ou Google), encontra o serviço, escolhe dia e horário e confirma o agendamento (com opções de cancelar e reagendar); o prestador cadastra serviços e acompanha a agenda com busca por texto, filtros de status (agendado, confirmado, concluído, cancelado) e ordenação. Há lembretes de agendamento, tarefas do dia a dia com categorias, calendário mensal e login local ou social (Google). Os dados são armazenados em PostgreSQL no servidor (tabelas: agendamentos, tarefas, usuarios, sessoes, servicos).
 
 ## Páginas principais
 
@@ -17,9 +17,10 @@ O SAOPS conecta clientes e prestadores de serviço: o cliente cria a conta gratu
 ## API (JSON)
 
 - [GET /api/status](https://saops-zjyx.onrender.com/api/status): saúde do serviço
-- [GET /agendamentos](https://saops-zjyx.onrender.com/agendamentos): lista de agendamentos
-- [GET /agendamentos/data/AAAA-MM-DD](https://saops-zjyx.onrender.com/agendamentos/data/2026-09-25): agendamentos do dia
-- [GET /tarefas](https://saops-zjyx.onrender.com/tarefas): lista de tarefas
+- [GET /api/prestadores](https://saops-zjyx.onrender.com/api/prestadores): prestadores e serviços cadastrados
+- [GET /agendamentos](https://saops-zjyx.onrender.com/agendamentos): agendamentos da conta autenticada
+- [GET /agendamentos/data/AAAA-MM-DD](https://saops-zjyx.onrender.com/agendamentos/data/2099-05-01?prestador_id=1): horários ocupados do prestador
+- [GET /api/tarefas](https://saops-zjyx.onrender.com/api/tarefas): lista de tarefas
 - POST /agendamentos, PUT /agendamentos/:id, DELETE /agendamentos/:id: CRUD de agendamentos (exige login)
 - GET /servicos: vitrine pública de serviços (com nome do prestador)
 - GET /servicos/meus, POST /servicos, PUT /servicos/:id, DELETE /servicos/:id: CRUD de serviços do prestador logado (só o dono altera)

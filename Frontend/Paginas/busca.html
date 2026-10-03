@@ -56,46 +56,30 @@
 
 <script src="../js/toast.js"></script>
 <script src="../js/ui.js"></script>
-<script src="../js/prestadores.js"></script>
+<script src="../js/api.js"></script>
 <script>
   const params = new URLSearchParams(window.location.search);
   const termoInicial = (params.get('busca') || '').trim();
   document.getElementById('txt_busca').value = termoInicial;
-
+  let todosPrestadores = [];
   function renderizar(termo) {
     const lista = document.getElementById('lista_resultados');
     const status = document.getElementById('status_busca');
-    const t = termo.toLowerCase();
-    const resultados = PRESTADORES.filter((p) =>
-      !t ||
-      p.nome.toLowerCase().includes(t) ||
-      p.categoria.toLowerCase().includes(t) ||
-      p.bairro.toLowerCase().includes(t)
-    );
-    lista.innerHTML = '';
-    if (!resultados.length) {
-      status.innerHTML = '<div class="vazio"><span class="vazio-ico">🔍</span>Nenhum resultado para "' + esc(termo) + '".</div>';
-      return;
-    }
-    status.innerHTML = '';
+    const t = termo.toLocaleLowerCase('pt-BR');
+    const resultados = todosPrestadores.filter((p) => !t || [p.nome, p.categoria, p.endereco, ...(p.servicos || []).map(s => s.nome)].some((v) => String(v || '').toLocaleLowerCase('pt-BR').includes(t)));
+    lista.replaceChildren();
+    if (!resultados.length) { status.textContent = todosPrestadores.length ? `Nenhum resultado para “${termo}”.` : 'Nenhum prestador cadastrado ainda.'; return; }
+    status.textContent = '';
     resultados.forEach((p) => {
-      const li = document.createElement('li');
-      const a = document.createElement('a');
-      a.href = 'detalhes-prestador.html?id=' + p.id;
-      a.innerHTML = '<p>' + esc(p.nome) + '</p>' +
-        '<span class="badge">⭐ ' + esc(p.estrelas) + ' · ' + esc(p.avaliacoes) + ' avaliações</span>' +
-        '<p class="t-meta">' + esc(p.categoria) + ' · ' + esc(p.bairro) + '</p>';
-      li.appendChild(a);
-      lista.appendChild(li);
+      const li = document.createElement('li'); const a = document.createElement('a');
+      a.href = 'detalhes-prestador.html?id=' + encodeURIComponent(p.id);
+      const nome = document.createElement('p'); nome.textContent = p.nome; a.append(nome);
+      const detalhe = document.createElement('p'); detalhe.className = 't-meta'; detalhe.textContent = [p.categoria, p.endereco, `${p.servicos.length} serviço(s)`].filter(Boolean).join(' · '); a.append(detalhe);
+      li.append(a); lista.append(li);
     });
   }
-
-  document.querySelector('form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    renderizar(document.getElementById('txt_busca').value.trim());
-  });
-
-  renderizar(termoInicial);
+  document.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); renderizar(document.getElementById('txt_busca').value.trim()); });
+  listarPrestadores().then((r) => { if (!r.sucesso) { document.getElementById('status_busca').textContent = 'Não foi possível carregar os prestadores.'; return; } todosPrestadores = r.dados; renderizar(termoInicial); });
 </script>
 
 <script src="../js/tema.js"></script>

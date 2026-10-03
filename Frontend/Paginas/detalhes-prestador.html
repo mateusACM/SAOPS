@@ -46,38 +46,21 @@
 
 <script src="../js/toast.js"></script>
 <script src="../js/ui.js"></script>
-<script src="../js/prestadores.js"></script>
+<script src="../js/api.js"></script>
 <script>
-  const params = new URLSearchParams(window.location.search);
-  const prestador = buscarPrestadorPorId(params.get('id'));
+  const id = new URLSearchParams(window.location.search).get('id');
   const main = document.getElementById('conteudo');
-
-  if (!prestador) {
-    document.getElementById('nome_prestador').textContent = 'Não encontrado';
-    main.innerHTML = '<section><p>Prestador não encontrado. Volte à busca e escolha novamente.</p></section>';
-  } else {
-    document.title = 'SAOPS - ' + prestador.nome;
-    document.getElementById('nome_prestador').textContent = prestador.nome;
-    main.innerHTML =
-      '<section>' +
-        '<p>' + prestador.estrelas + ' estrelas (' + prestador.avaliacoes + ' avaliações)</p>' +
-        '<p>' + prestador.categoria + ' - ' + prestador.bairro + '</p>' +
-        '<p>' + prestador.endereco + '</p>' +
-        '<p>' + prestador.funcionamento + '</p>' +
-      '</section>' +
-      '<section><h2>Sobre</h2><p>' + prestador.sobre + '</p></section>' +
-      '<section><h2>Serviços</h2><ul>' +
-        prestador.servicos.map((s) => '<li>' + s + '</li>').join('') +
-      '</ul></section>' +
-      '<section><h2>Avaliações recentes</h2><ul>' +
-        prestador.avaliacoes_recentes.map((a) =>
-          '<li><p>' + a.autor + '</p><p>' + a.nota + '</p><p>' + a.texto + '</p></li>'
-        ).join('') +
-      '</ul></section>' +
-      '<a href="agendamento.html?prestador=' + prestador.id + '">' +
-        '<button type="button" id="btn_agendar_horario">Agendar horário</button>' +
-      '</a>';
-  }
+  listarPrestadores().then((r) => {
+    const p = r.sucesso && r.dados.find((x) => String(x.id) === String(id));
+    if (!p) { document.getElementById('nome_prestador').textContent = 'Não encontrado'; main.textContent = 'Prestador não encontrado. Volte à busca e escolha novamente.'; return; }
+    document.title = 'SAOPS - ' + p.nome; document.getElementById('nome_prestador').textContent = p.nome; main.replaceChildren();
+    const sec = document.createElement('section'); const titulo = document.createElement('h2'); titulo.textContent = 'Sobre o negócio'; sec.append(titulo);
+    const meta = document.createElement('p'); meta.textContent = [p.categoria, p.endereco].filter(Boolean).join(' · '); sec.append(meta); main.append(sec);
+    const serv = document.createElement('section'); const h = document.createElement('h2'); h.textContent = 'Serviços'; serv.append(h);
+    if (!p.servicos.length) { const vazio = document.createElement('p'); vazio.textContent = 'Este prestador ainda não cadastrou serviços.'; serv.append(vazio); }
+    p.servicos.forEach((s) => { const item = document.createElement('article'); const n = document.createElement('h3'); n.textContent = s.nome; item.append(n); if (s.descricao) { const d = document.createElement('p'); d.textContent = s.descricao; item.append(d); } const info = document.createElement('p'); info.textContent = [s.duracao_min ? `${s.duracao_min} min` : '', s.preco == null ? 'Preço a combinar' : `R$ ${Number(s.preco).toFixed(2).replace('.', ',')}`].filter(Boolean).join(' · '); item.append(info); serv.append(item); });
+    main.append(serv); const agendar = document.createElement('a'); agendar.href = 'agendamento.html?prestador=' + encodeURIComponent(p.id); const botao = document.createElement('button'); botao.type = 'button'; botao.textContent = 'Agendar horário'; agendar.append(botao); main.append(agendar);
+  });
 </script>
 
 <script src="../js/tema.js"></script>

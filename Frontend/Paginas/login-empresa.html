@@ -4,20 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
-  <meta name="description" content="Entre como prestador no SAOPS com e-mail, Google ou Microsoft.">
+  <meta name="description" content="Entre como prestador no SAOPS com e-mail ou Google.">
   <meta name="theme-color" content="#03071f">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://saops-zjyx.onrender.com/login-empresa">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="SAOPS">
   <meta property="og:title" content="SAOPS - Entrar como prestador">
-  <meta property="og:description" content="Entre como prestador no SAOPS com e-mail, Google ou Microsoft.">
+  <meta property="og:description" content="Entre como prestador no SAOPS com e-mail ou Google.">
   <meta property="og:url" content="https://saops-zjyx.onrender.com/login-empresa">
   <meta property="og:image" content="https://saops-zjyx.onrender.com/img/og-saops.jpg">
   <meta property="og:locale" content="pt_BR">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="SAOPS - Entrar como prestador">
-  <meta name="twitter:description" content="Entre como prestador no SAOPS com e-mail, Google ou Microsoft.">
+  <meta name="twitter:description" content="Entre como prestador no SAOPS com e-mail ou Google.">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
   <title>SAOPS - Entrar como prestador</title>
@@ -43,11 +43,11 @@
   <main>
     <p id="erro_login" class="erro-msg" hidden></p>
     <form id="form_login_empresa" action="painel-prestador.html" method="get">
-      <label for="txt_identificador_login_empresa">E-mail ou CNPJ</label>
+      <label for="txt_identificador_login_empresa">E-mail ou nome do negócio</label>
       <input type="text" id="txt_identificador_login_empresa" name="identificador" placeholder="empresa@email.com" required>
 
       <label for="txt_senha_login_empresa">Senha</label>
-      <input type="password" id="txt_senha_login_empresa" name="senha" placeholder="********" required>
+      <input type="password" id="txt_senha_login_empresa" name="senha" placeholder="Sua senha" required>
 
       <button type="submit" id="btn_entrar_empresa">Entrar</button>
     </form>
@@ -55,9 +55,6 @@
     <div class="social-login">
       <p class="social-titulo">ou entre com</p>
       <div id="google_btn"></div>
-      <button type="button" id="ms_btn" class="social-btn">
-        <span class="icone-ms"><i></i><i></i><i></i><i></i></span> Entrar com Microsoft
-      </button>
     </div>
 
     <a href="cadastro-empresa.html">Cadastrar meu negócio</a>
@@ -79,7 +76,7 @@
 
     const btn = document.getElementById('btn_entrar_empresa');
     btn.disabled = true;
-    const r = await entrarConta(identificador, senha);
+    const r = await entrarConta(identificador, senha, 'empresa');
     btn.disabled = false;
 
     if (!r.sucesso) {
@@ -91,7 +88,7 @@
     window.location.href = voltarAposLogin('painel-prestador.html');
   });
 
-  iniciarLoginSocial({ destino: 'painel-prestador.html' });
+  iniciarLoginSocial({ destino: 'painel-prestador.html', tipo: 'empresa' });
 </script>
 
 <script src="../js/tema.js"></script>

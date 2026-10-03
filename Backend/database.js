@@ -46,7 +46,8 @@ const SCHEMA = [
         horario TEXT NOT NULL,
         telefone TEXT,
         status TEXT DEFAULT 'agendado',
-        usuario_id BIGINT
+        usuario_id BIGINT,
+        prestador_id BIGINT
     )`,
     `CREATE TABLE IF NOT EXISTS tarefas (
         id BIGSERIAL PRIMARY KEY,
@@ -54,7 +55,8 @@ const SCHEMA = [
         data TEXT NOT NULL,
         hora TEXT,
         categoria TEXT DEFAULT 'pessoal',
-        concluido INTEGER DEFAULT 0
+        concluido INTEGER DEFAULT 0,
+        usuario_id BIGINT
     )`,
     `CREATE TABLE IF NOT EXISTS usuarios (
         id BIGSERIAL PRIMARY KEY,
@@ -66,6 +68,8 @@ const SCHEMA = [
         provider TEXT NOT NULL DEFAULT 'local',
         provider_id TEXT,
         foto TEXT,
+        categoria TEXT,
+        endereco TEXT,
         criado_em TEXT DEFAULT (to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS'))
     )`,
     `CREATE TABLE IF NOT EXISTS sessoes (
@@ -84,10 +88,18 @@ const SCHEMA = [
         criado_em TEXT DEFAULT (to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS'))
     )`,
     // Impede double-booking mesmo em escritas concorrentes
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_ag_data_horario ON agendamentos(data, horario)`,
+    `ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS prestador_id BIGINT`,
+    `DROP INDEX IF EXISTS idx_ag_data_horario`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_ag_prestador_data_horario ON agendamentos(prestador_id, data, horario) WHERE prestador_id IS NOT NULL`,
     // "Meus agendamentos": ligação agendamento -> usuário da sessão
     `ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS usuario_id BIGINT`,
     `CREATE INDEX IF NOT EXISTS idx_ag_usuario ON agendamentos(usuario_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_ag_prestador ON agendamentos(prestador_id)`,
+    // Tarefas são pessoais: dono + perfil do negócio do prestador
+    `ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS usuario_id BIGINT`,
+    `CREATE INDEX IF NOT EXISTS idx_tarefas_usuario ON tarefas(usuario_id)`,
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS categoria TEXT`,
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS endereco TEXT`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes(expira_em)`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)`
 ];

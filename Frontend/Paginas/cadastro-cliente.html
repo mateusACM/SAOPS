@@ -53,10 +53,10 @@
       <input type="tel" id="txt_telefone_cadastro_cliente" name="telefone" placeholder="(00) 00000-0000" required>
 
       <label for="txt_senha_cadastro_cliente">Senha</label>
-      <input type="password" id="txt_senha_cadastro_cliente" name="senha" placeholder="********" required>
+      <input type="password" id="txt_senha_cadastro_cliente" name="senha" placeholder="Mínimo 8 caracteres" minlength="8" maxlength="72" required>
 
       <label for="txt_confirmar_senha_cadastro_cliente">Confirmar senha</label>
-      <input type="password" id="txt_confirmar_senha_cadastro_cliente" name="confirmar-senha" placeholder="********" required>
+      <input type="password" id="txt_confirmar_senha_cadastro_cliente" name="confirmar-senha" placeholder="Repita a senha" minlength="8" maxlength="72" required>
 
       <button type="submit" id="btn_criar_conta_cliente">Criar conta</button>
     </form>
@@ -84,9 +84,9 @@
       erro.textContent = 'As senhas não conferem. Digite a mesma senha nos dois campos.';
       return;
     }
-    if (senha.length < 4) {
+    if (senha.length < 8) {
       erro.hidden = false;
-      erro.textContent = 'A senha deve ter ao menos 4 caracteres.';
+      erro.textContent = 'A senha deve ter ao menos 8 caracteres.';
       return;
     }
 

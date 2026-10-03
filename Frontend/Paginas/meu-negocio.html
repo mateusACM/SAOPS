@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Edite o perfil público do seu negócio e gerencie seus serviços no SAOPS.">
+  <meta name="robots" content="noindex, follow"><link rel="canonical" href="https://saops-zjyx.onrender.com/meu-negocio">
+  <title>SAOPS - Meu negócio</title><link rel="stylesheet" href="../CSS/style.css"><link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+  <header><a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a><h1>Meu negócio</h1>
+    <nav class="topnav"><a href="painel-prestador.html">Painel</a><a href="agenda-prestador.html">Agenda</a><a href="busca.html">Buscar</a><a href="meu-negocio.html" aria-current="page">Meu negócio</a></nav>
+  </header>
+  <main>
+    <section><h2>Perfil público</h2><p id="status_negocio" role="status"></p>
+      <form id="form_negocio"><label for="nome_negocio">Nome do negócio</label><input id="nome_negocio" maxlength="120" required>
+        <label for="categoria_negocio">Categoria</label><select id="categoria_negocio"><option value="">Selecione</option><option value="barbearia">Barbearia</option><option value="salao">Salão de beleza</option><option value="clinica">Clínica</option><option value="outro">Outro</option></select>
+        <label for="endereco_negocio">Endereço</label><input id="endereco_negocio" maxlength="200" placeholder="Rua, número, bairro">
+        <button type="submit">Salvar perfil</button></form>
+    </section>
+    <section><h2>Serviços</h2><p id="status_servicos" role="status">Carregando...</p><ul id="lista_servicos"></ul></section>
+    <section><h2 id="titulo_servico">Adicionar serviço</h2><form id="form_servico">
+      <label for="servico_nome">Nome</label><input id="servico_nome" maxlength="120" required>
+      <label for="servico_descricao">Descrição</label><textarea id="servico_descricao" maxlength="500" rows="2"></textarea>
+      <label for="servico_duracao">Duração (minutos)</label><input id="servico_duracao" type="number" min="1" step="1">
+      <label for="servico_preco">Preço (R$)</label><input id="servico_preco" type="number" min="0" step="0.01">
+      <button id="salvar_servico" type="submit">Adicionar serviço</button><button id="cancelar_edicao" class="secundario" type="button" hidden>Cancelar edição</button>
+    </form></section>
+  </main>
+  <script src="../js/toast.js"></script><script src="../js/ui.js"></script><script src="../js/api.js"></script>
+  <script>
+    let editando = null;
+    const q = (id) => document.getElementById(id);
+    const formServico = q('form_servico');
+    function informar(id, texto) { q(id).textContent = texto; }
+    function preencherServico(servico) {
+      editando = servico ? servico.id : null;
+      q('servico_nome').value = servico?.nome || '';
+      q('servico_descricao').value = servico?.descricao || '';
+      q('servico_duracao').value = servico?.duracao_min ?? '';
+      q('servico_preco').value = servico?.preco ?? '';
+      q('titulo_servico').textContent = editando ? 'Editar serviço' : 'Adicionar serviço';
+      q('salvar_servico').textContent = editando ? 'Salvar alterações' : 'Adicionar serviço';
+      q('cancelar_edicao').hidden = !editando;
+    }
+    async function carregarServicos() {
+      const r = await meusServicos();
+      if (r.naoAutenticado) { exigirLogin('login-empresa.html'); return; }
+      const lista = q('lista_servicos'); lista.replaceChildren();
+      if (!r.sucesso) { informar('status_servicos', 'Não foi possível carregar os serviços.'); return; }
+      informar('status_servicos', r.dados.length ? `${r.dados.length} serviço(s) cadastrado(s).` : 'Nenhum serviço cadastrado ainda.');
+      r.dados.forEach((servico) => {
+        const li = document.createElement('li'); const texto = document.createElement('div');
+        const nome = document.createElement('p'); nome.textContent = servico.nome; texto.append(nome);
+        const detalhes = document.createElement('p'); detalhes.className = 't-meta'; detalhes.textContent = [servico.duracao_min ? `${servico.duracao_min} min` : '', servico.preco == null ? 'Preço a combinar' : `R$ ${Number(servico.preco).toFixed(2).replace('.', ',')}`, servico.descricao || ''].filter(Boolean).join(' · '); texto.append(detalhes); li.append(texto);
+        const editar = document.createElement('button'); editar.type = 'button'; editar.className = 'mini secundario'; editar.textContent = 'Editar'; editar.onclick = () => preencherServico(servico);
+        const remover = document.createElement('button'); remover.type = 'button'; remover.className = 'mini perigo'; remover.textContent = 'Remover'; remover.onclick = async () => { if (!confirm(`Remover “${servico.nome}”?`)) return; const out = await deletarServico(servico.id); if (out.sucesso) carregarServicos(); else toast(out.erro || 'Falha ao remover.', 'erro'); };
+        li.append(editar, remover); lista.append(li);
+      });
+    }
+    async function iniciar() {
+      if (!(await exigirLogin('login-empresa.html'))) return;
+      const atual = await usuarioAtual();
+      if (!atual.sucesso || atual.usuario.tipo !== 'empresa') { window.location.replace('painel-prestador.html'); return; }
+      const u = atual.usuario; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || '';
+      carregarServicos();
+    }
+    q('form_negocio').addEventListener('submit', async (e) => { e.preventDefault(); const out = await chamarAuth('negocio', { metodo: 'PUT', dados: { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim() } }); informar('status_negocio', out.sucesso ? 'Perfil atualizado.' : (out.erro || 'Não foi possível salvar.')); });
+    formServico.addEventListener('submit', async (e) => { e.preventDefault(); const dados = { nome: q('servico_nome').value.trim(), descricao: q('servico_descricao').value.trim(), duracao_min: q('servico_duracao').value || null, preco: q('servico_preco').value || null }; const out = editando ? await atualizarServico(editando, dados) : await criarServico(dados); if (!out.sucesso) { toast(out.erro || 'Não foi possível salvar.', 'erro'); return; } preencherServico(null); carregarServicos(); });
+    q('cancelar_edicao').onclick = () => preencherServico(null);
+    iniciar();
+  </script><script src="../js/tema.js"></script>
+</body></html>

@@ -1,11 +1,11 @@
 // ==========================================
 // AUTH.JS - cadastro, login, sessão e OAuth
-// (Google e Microsoft) via /api/auth/*
+// (Google) via /api/auth/*
 // ==========================================
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const { q, qGet, AGORA_SQL } = require('./database');
+const { q, qGet, qAll, AGORA_SQL } = require('./database');
 
 const router = express.Router();
 
@@ -61,7 +61,9 @@ function publico(u) {
         telefone: u.telefone,
         tipo: u.tipo,
         provider: u.provider,
-        foto: u.foto || null
+        foto: u.foto || null,
+        categoria: u.categoria || null,
+        endereco: u.endereco || null
     };
 }
 
@@ -95,13 +97,12 @@ async function exigirLogin(req, res, next) {
 // Config pública dos botões sociais (client IDs não são segredos)
 router.get('/config', (req, res) => {
     res.json({
-        googleClientId: process.env.GOOGLE_CLIENT_ID || '',
-        microsoftClientId: process.env.MICROSOFT_CLIENT_ID || ''
+        googleClientId: process.env.GOOGLE_CLIENT_ID || ''
     });
 });
 
 router.post('/cadastro', async (req, res) => {
-    const { nome, email, senha, telefone, tipo } = req.body || {};
+    const { nome, email, senha, telefone, tipo, categoria, endereco } = req.body || {};
     const emailNorm = String(email || '').trim().toLowerCase();
 
     if (!nome || !nome.trim()) return res.status(400).json({ sucesso: false, erro: 'Informe seu nome.' });
@@ -111,6 +112,8 @@ router.post('/cadastro', async (req, res) => {
     if (telefone && !validarTelefoneLocal(telefone)) return res.status(400).json({ sucesso: false, erro: 'Telefone inválido. Deve ter entre 10 e 11 dígitos.' });
 
     const tipoFinal = tipo === 'empresa' ? 'empresa' : 'cliente';
+    const categoriaFinal = String(categoria || '').trim().slice(0, 60) || null;
+    const enderecoFinal = String(endereco || '').trim().slice(0, 200) || null;
 
     try {
         const existe = await qGet('SELECT id FROM usuarios WHERE email = $1', [emailNorm]);
@@ -119,8 +122,8 @@ router.post('/cadastro', async (req, res) => {
         const hash = await bcrypt.hash(senha, 10);
         // e-mail já é UNIQUE no banco: corrida aqui vira 409
         const novo = await q(
-            'INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [nome.trim(), emailNorm, hash, telefone || null, tipoFinal]
+            'INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo, categoria, endereco) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [nome.trim(), emailNorm, hash, telefone || null, tipoFinal, categoriaFinal, enderecoFinal]
         );
         criarSessao(req, res, novo.rows[0]);
     } catch (e) {
@@ -131,20 +134,18 @@ router.post('/cadastro', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-    const { email, senha } = req.body || {};
+    const { email, senha, tipo } = req.body || {};
+    const tipoConta = tipo === 'empresa' ? 'empresa' : 'cliente';
     const identificador = String(email || '').trim().toLowerCase();
 
     try {
-        // Cliente entra com e-mail; prestador também aceita o nome do negócio
+        // Cliente entra com e-mail; prestador também pode usar o nome do negócio.
         const u = await qGet(
             `SELECT * FROM usuarios
-             WHERE provider = 'local' AND tipo = 'empresa'
-               AND (email = $1 OR lower(nome) = $2)
-             UNION
-             SELECT * FROM usuarios
-             WHERE provider = 'local' AND tipo = 'cliente' AND email = $3
+             WHERE provider = 'local' AND tipo = $1
+               AND (email = $2 OR ($1 = 'empresa' AND lower(nome) = $3))
              LIMIT 1`,
-            [identificador, identificador, identificador]
+            [tipoConta, identificador, identificador]
         );
         if (!u || !u.senha_hash) return res.status(401).json({ sucesso: false, erro: 'E-mail ou senha incorretos.' });
 
@@ -175,16 +176,38 @@ router.get('/eu', async (req, res) => {
     res.json({ sucesso: true, usuario: publico(u) });
 });
 
-// ---------- OAuth (Google + Microsoft) ----------
+// Perfil do negócio: o prestador logado edita os próprios dados
+router.put('/negocio', exigirLogin, async (req, res) => {
+    if (req.usuario.tipo !== 'empresa') {
+        return res.status(403).json({ sucesso: false, erro: 'Só prestadores têm perfil de negócio.' });
+    }
+    const { nome, categoria, endereco } = req.body || {};
+    const nomeFinal = String(nome || '').trim();
+    const categoriaFinal = String(categoria || '').trim().slice(0, 60) || null;
+    const enderecoFinal = String(endereco || '').trim().slice(0, 200) || null;
+    if (!nomeFinal) return res.status(400).json({ sucesso: false, erro: 'Informe o nome do negócio.' });
+    if (nomeFinal.length > 120) return res.status(400).json({ sucesso: false, erro: 'Nome muito longo (máx. 120).' });
+    try {
+        const novo = await q(
+            'UPDATE usuarios SET nome = $1, categoria = $2, endereco = $3 WHERE id = $4 RETURNING *',
+            [nomeFinal, categoriaFinal, enderecoFinal, req.usuario.id]
+        );
+        res.json({ sucesso: true, usuario: publico(novo.rows[0]) });
+    } catch (e) {
+        console.error('Erro interno:', e.message);
+        res.status(500).json({ sucesso: false, erro: 'Erro interno' });
+    }
+});
+
+// ---------- OAuth (Google) ----------
 
 router.post('/oauth', async (req, res) => {
-    const { provider, credential, nonce } = req.body || {};
+    const { provider, credential, nonce, tipo } = req.body || {};
 
     // 1) Valida a credencial no provedor (erros aqui = 401)
     let dados;
     try {
         if (provider === 'google') dados = await verificarGoogle(credential);
-        else if (provider === 'microsoft') dados = await verificarMicrosoft(credential, nonce);
         else return res.status(400).json({ sucesso: false, erro: 'Provedor inválido.' });
 
         if (nonce && dados.nonce && nonce !== dados.nonce) {
@@ -215,8 +238,8 @@ router.post('/oauth', async (req, res) => {
 
         // Cria conta nova sem senha
         const novo = await q(
-            'INSERT INTO usuarios (nome, email, provider, provider_id, foto) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [dados.nome, dados.email, provider, dados.id, dados.foto || null]
+            'INSERT INTO usuarios (nome, email, provider, provider_id, foto, tipo) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [dados.nome, dados.email, provider, dados.id, dados.foto || null, tipo === 'empresa' ? 'empresa' : 'cliente']
         );
         criarSessao(req, res, novo.rows[0]);
     } catch (e) {
@@ -255,82 +278,10 @@ async function verificarGoogle(idToken) {
     };
 }
 
-// JWKS da Microsoft com cache de 1h + timeout (evita 1 HTTP por login)
-let JWKS_CACHE = { chaves: [], expira: 0 };
-
-async function buscarJWKS() {
-    if (JWKS_CACHE.chaves.length && Date.now() < JWKS_CACHE.expira) return JWKS_CACHE.chaves;
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
-    try {
-        const r = await fetch('https://login.microsoftonline.com/common/discovery/v2.0/keys', { signal: ctrl.signal });
-        if (!r.ok) throw new Error('Falha ao consultar as chaves da Microsoft.');
-        const jwks = await r.json();
-        JWKS_CACHE = { chaves: jwks.keys || [], expira: Date.now() + 60 * 60 * 1000 };
-        return JWKS_CACHE.chaves;
-    } finally {
-        clearTimeout(t);
-    }
-}
-
 function fetchComTimeout(url, ms = 8000) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), ms);
     return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
-}
-
-// Microsoft: valida assinatura RS256 do id_token via JWKS oficial + aud/iss/exp/nonce
-async function verificarMicrosoft(token, nonceEsperado) {
-    const clientId = process.env.MICROSOFT_CLIENT_ID;
-    if (!clientId) throw new Error('Login com Microsoft não configurado no servidor.');
-    if (!token) throw new Error('Credencial ausente.');
-
-    const partes = token.split('.');
-    if (partes.length !== 3) throw new Error('Token da Microsoft inválido.');
-
-    const b64url = (s) => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
-    let header, payload;
-    try {
-        header = JSON.parse(b64url(partes[0]).toString());
-        payload = JSON.parse(b64url(partes[1]).toString());
-    } catch (e) {
-        throw new Error('Token da Microsoft malformado.');
-    }
-
-    if (payload.aud !== clientId) throw new Error('Audiência inválida.');
-    if (!/^https:\/\/login\.microsoftonline\.com\/[^/]+\/v2\.0$/.test(payload.iss || '')) {
-        throw new Error('Emissor inválido.');
-    }
-    if (!payload.exp || payload.exp * 1000 < Date.now()) throw new Error('Token expirado.');
-    if (nonceEsperado && payload.nonce !== nonceEsperado) throw new Error('Nonce inválido.');
-
-    // Busca as chaves públicas da Microsoft e confere a assinatura
-    if (header.alg !== 'RS256') throw new Error('Algoritmo do token inválido.');
-    const chaves = await buscarJWKS();
-    const jwk = (chaves || []).find((k) => k.kid === header.kid);
-    if (!jwk) throw new Error('Chave do token não encontrada.');
-
-    const chave = crypto.createPublicKey({ key: jwk, format: 'jwk' });
-    const ok = crypto.verify(
-        'RSA-SHA256',
-        Buffer.from(partes[0] + '.' + partes[1]),
-        chave,
-        b64url(partes[2])
-    );
-    if (!ok) throw new Error('Assinatura inválida.');
-
-    const email = (payload.preferred_username || payload.email || '').toLowerCase();
-    if (!email) throw new Error('Microsoft não retornou o e-mail.');
-
-    return {
-        id: payload.oid || payload.sub,
-        email,
-        nome: payload.name || email,
-        foto: null,
-        nonce: payload.nonce || null,
-        // Conta autenticada pelo próprio IdP: identidade verificada
-        emailVerificado: true
-    };
 }
 
 module.exports = router;

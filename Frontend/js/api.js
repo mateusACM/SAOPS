@@ -45,6 +45,15 @@ async function criarAgendamento(dados) {
 // LISTAR AGENDAMENTOS
 // ==========================================
 
+async function listarAgendamentosPrestador() {
+    try {
+        const response = await fetch(`${API_URL}/agendamentos/prestador`);
+        const data = await response.json();
+        if (response.ok) return { sucesso: true, dados: data.agendamentos };
+        return { sucesso: false, erro: data.erro, naoAutenticado: response.status === 401 };
+    } catch (error) { return { sucesso: false, erro: error.message }; }
+}
+
 async function listarAgendamentos() {
     try {
         const response = await fetch(`${API_URL}/agendamentos`);
@@ -108,9 +117,10 @@ async function buscarAgendamentoPorId(id) {
 // BUSCAR AGENDAMENTOS POR DATA
 // ==========================================
 
-async function buscarAgendamentosPorData(data) {
+async function buscarAgendamentosPorData(data, prestadorId) {
     try {
-        const response = await fetch(`${API_URL}/agendamentos/data/${data}`);
+        const qs = prestadorId ? `?prestador_id=${encodeURIComponent(prestadorId)}` : '';
+        const response = await fetch(`${API_URL}/agendamentos/data/${data}${qs}`);
         const result = await response.json();
 
         if (response.ok) {
@@ -190,7 +200,7 @@ async function listarTarefas(filtro = {}) {
         if (filtro.data) params.set('data', filtro.data);
         if (filtro.concluido !== undefined && filtro.concluido !== null) params.set('concluido', filtro.concluido);
         const qs = params.toString();
-        const response = await fetch(`${API_URL}/tarefas${qs ? '?' + qs : ''}`);
+        const response = await fetch(`${API_URL}/api/tarefas${qs ? '?' + qs : ''}`);
         const result = await response.json();
 
         if (response.ok) {
@@ -205,7 +215,7 @@ async function listarTarefas(filtro = {}) {
 
 async function criarTarefa(dados) {
     try {
-        const response = await fetch(`${API_URL}/tarefas`, {
+        const response = await fetch(`${API_URL}/api/tarefas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dados)
@@ -220,7 +230,7 @@ async function criarTarefa(dados) {
 
 async function atualizarTarefa(id, dados) {
     try {
-        const response = await fetch(`${API_URL}/tarefas/${id}`, {
+        const response = await fetch(`${API_URL}/api/tarefas/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dados)
@@ -235,7 +245,7 @@ async function atualizarTarefa(id, dados) {
 
 async function deletarTarefa(id) {
     try {
-        const response = await fetch(`${API_URL}/tarefas/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_URL}/api/tarefas/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (response.ok) return { sucesso: true, dados: result };
         return { sucesso: false, erro: result.erro, naoAutenticado: response.status === 401 };
@@ -268,12 +278,12 @@ function cadastrarConta(dados) {
     return chamarAuth('cadastro', { metodo: 'POST', dados });
 }
 
-function entrarConta(email, senha) {
-    return chamarAuth('login', { metodo: 'POST', dados: { email, senha } });
+function entrarConta(email, senha, tipo) {
+    return chamarAuth('login', { metodo: 'POST', dados: { email, senha, tipo } });
 }
 
-function entrarSocial(provider, credential, nonce) {
-    return chamarAuth('oauth', { metodo: 'POST', dados: { provider, credential, nonce } });
+function entrarSocial(provider, credential, nonce, tipo) {
+    return chamarAuth('oauth', { metodo: 'POST', dados: { provider, credential, nonce, tipo } });
 }
 
 function sairConta() {
@@ -301,6 +311,15 @@ function salvarSessaoLocal(usuario) {
 // ==========================================
 // SERVIÇOS DO PRESTADOR (/servicos)
 // ==========================================
+
+async function listarPrestadores() {
+    try {
+        const response = await fetch(`${API_URL}/api/prestadores`);
+        const result = await response.json();
+        if (response.ok) return { sucesso: true, dados: result.prestadores };
+        return { sucesso: false, erro: result.erro };
+    } catch (error) { return { sucesso: false, erro: error.message }; }
+}
 
 async function listarServicos() {
     try {

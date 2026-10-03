@@ -6,7 +6,7 @@
   <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
   <meta name="description" content="Marque um horário: escolha o serviço, o dia e o horário em poucos passos no SAOPS.">
   <meta name="theme-color" content="#03071f">
-  <meta name="robots" content="index, follow">
+  <meta name="robots" content="noindex, follow">
   <link rel="canonical" href="https://saops-zjyx.onrender.com/agendamento">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="SAOPS">
@@ -53,26 +53,7 @@
 
       <section>
         <h2>Escolha o serviço</h2>
-        <div class="servicos-grid">
-          <label class="servico-card">
-            <input type="radio" id="txt_servico_corte" name="servico" value="corte" checked>
-            <span class="s-nome">Corte de cabelo</span>
-            <span class="s-detalhe">40 min</span>
-            <span class="s-preco">R$ 45</span>
-          </label>
-          <label class="servico-card">
-            <input type="radio" id="txt_servico_barba" name="servico" value="barba">
-            <span class="s-nome">Barba</span>
-            <span class="s-detalhe">25 min</span>
-            <span class="s-preco">R$ 30</span>
-          </label>
-          <label class="servico-card">
-            <input type="radio" id="txt_servico_combo" name="servico" value="combo">
-            <span class="s-nome">Corte + barba</span>
-            <span class="s-detalhe">60 min</span>
-            <span class="s-preco">R$ 65</span>
-          </label>
-        </div>
+        <div class="servicos-grid" id="lista_servicos_reserva"><p>Carregando serviços...</p></div>
       </section>
 
       <section>
@@ -100,16 +81,24 @@
 <script src="../js/ui.js"></script>
 <script src="../js/api.js"></script>
 <script src="../js/lembretes.js"></script>
-<script src="../js/prestadores.js"></script>
+
 
 <!-- SCRIPT PARA LIDAR COM O FORMULÁRIO -->
 <script>
     // Mostra o prestador escolhido (vem de detalhes-prestador.html?prestador=ID)
     const prestadorId = new URLSearchParams(window.location.search).get('prestador');
-    const prestador = prestadorId && typeof buscarPrestadorPorId === 'function'
-      ? buscarPrestadorPorId(prestadorId)
-      : null;
-    document.getElementById('nome_prestador').textContent = prestador ? prestador.nome : 'Agendar horário';
+    let prestador = null;
+    document.getElementById('nome_prestador').textContent = 'Agendar horário';
+    const radios = document.getElementById('lista_servicos_reserva');
+    const carregaPrestador = async () => {
+      const r = await listarPrestadores();
+      prestador = r.sucesso ? r.dados.find((p) => String(p.id) === String(prestadorId)) : null;
+      document.getElementById('nome_prestador').textContent = prestador ? prestador.nome : 'Prestador não encontrado';
+      radios.replaceChildren();
+      (prestador?.servicos || []).forEach((s, i) => { const label = document.createElement('label'); label.className = 'servico-card'; const input = document.createElement('input'); input.type = 'radio'; input.name = 'servico'; input.value = s.nome; input.required = true; if (!i) input.checked = true; const nome = document.createElement('span'); nome.className = 's-nome'; nome.textContent = s.nome; const info = document.createElement('span'); info.className = 's-detalhe'; info.textContent = s.duracao_min ? `${s.duracao_min} min` : ''; const preco = document.createElement('span'); preco.className = 's-preco'; preco.textContent = s.preco == null ? 'Preço a combinar' : `R$ ${Number(s.preco).toFixed(2).replace('.', ',')}`; label.append(input, nome, info, preco); radios.append(label); });
+      if (!prestador?.servicos?.length) radios.textContent = 'Este prestador não possui serviços disponíveis.';
+    };
+    carregaPrestador();
     // Data mínima = hoje (evita erro "datas passadas" do backend)
     // Aceita ?data=YYYY-MM-DD (vem do calendário)
     const campoData = document.getElementById('txt_data');
@@ -130,7 +119,7 @@
       const data = campoData.value;
       if (!data) { aviso.textContent = ''; return; }
       aviso.textContent = 'Verificando horários...';
-      const r = await buscarAgendamentosPorData(data);
+      const r = await buscarAgendamentosPorData(data, prestadorId);
       if (!r.sucesso) {
         aviso.textContent = 'Não foi possível verificar vagas: ' + r.erro;
         return;
@@ -169,7 +158,10 @@
         evento.preventDefault(); // Não recarrega a página
 
         // Pega os dados do formulário
-        const servico = form.querySelector('input[name="servico"]:checked').value;
+        if (!(await exigirLogin('login-cliente.html'))) return;
+        const servicoSelecionado = form.querySelector('input[name="servico"]:checked');
+        if (!prestador || !servicoSelecionado) { toast('Escolha um prestador com serviço disponível.', 'erro'); return; }
+        const servico = servicoSelecionado.value;
         const horarioEl = form.querySelector('input[name="horario"]:checked');
         const nome_cliente = document.getElementById('txt_nome').value.trim();
         const telefone = document.getElementById('txt_telefone').value.trim();
@@ -199,7 +191,8 @@
             data: data,
             horario: horarioEl.value,
             telefone: telefone,
-            status: "agendado"
+            status: "agendado",
+            prestador_id: prestador.id
         };
 
         const btn = document.getElementById('btn_confirmar_agendamento');

@@ -49,7 +49,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Nova logo: símbolo "S" em degradê + wordmark (`Frontend/img/`)
 
 ### Adicionado
-- **Autenticação real**: cadastro/login (bcrypt), sessão em cookie HttpOnly de 7 dias, OAuth **Google** (GIS) e **Microsoft** (popup + nonce), vínculo por e-mail verificado
+- **Autenticação real**: cadastro/login (bcrypt), sessão em cookie HttpOnly de 7 dias, OAuth **Google** (GIS), vínculo por e-mail verificado
 - **Escrita com login**: `POST/PUT/DELETE` exigem sessão (`401`); volta-do-login (`saops_voltar`, anti-open-redirect)
 - **Serviços do prestador**: tabela `servicos` + CRUD com dono (`GET /servicos`, `/meus`, validações)
 - **Filtros avançados**: texto, chips de status, período, ordenação, contador (agenda + calendário)
@@ -366,3 +366,10 @@ Para dúvidas sobre mudanças específicas:
 **Versão Atual:** 1.1.0 
 
 **Status:** Estamos muitos fodidos
+
+
+## [Unreleased]
+
+- Prestadores e serviços reais na busca e na reserva; agendamentos passam a registrar cliente e prestador.
+- Tela Meu negócio com perfil público e edição inline de serviços.
+- Tarefas e agendamentos limitados ao usuário autenticado.

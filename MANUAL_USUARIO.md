@@ -27,7 +27,7 @@ Este manual ensina a usar o **SAOPS** (https://saops-zjyx.onrender.com/): marcar
 
 1. Abra a página inicial e clique em **Marcar horário** (cliente) ou **Sou prestador** (negócio)
 2. Escolha **Ainda não tenho conta** e preencha nome, e-mail e senha (**mínimo 8 caracteres**)
-3. Ou entre direto com **Google** ou **Microsoft** (sem senha)
+3. Ou entre direto com **Google** (sem senha)
 4. Pronto — você volta automaticamente pra onde estava
 
 ---

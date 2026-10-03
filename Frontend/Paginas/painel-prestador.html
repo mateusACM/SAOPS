@@ -31,7 +31,7 @@
     <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
     <h1>Painel do prestador</h1>
     <a href="agenda-prestador.html">Agenda completa</a>
-    <a href="gerenciar-servicos.html">Meus serviços</a>
+    <a href="meu-negocio.html">Meu negócio</a>
     <nav class="topnav">
       <a href="calendario.html">Calendário</a>
       <a href="tarefas.html">Tarefas</a>
@@ -75,8 +75,8 @@
         <a href="agenda-prestador.html">
           <button type="button">Ver agenda completa</button>
         </a>
-        <a href="gerenciar-servicos.html">
-          <button type="button" class="secundario">Meus serviços</button>
+        <a href="meu-negocio.html">
+          <button type="button" class="secundario">Meu negócio e serviços</button>
         </a>
         <a href="calendario.html">
           <button type="button" class="secundario">Calendário</button>
@@ -99,7 +99,7 @@
 
   async function carregarPainel() {
     const statusResumo = document.getElementById('status_resumo');
-    const r = await listarAgendamentos();
+    const r = await listarAgendamentosPrestador();
     if (!r.sucesso) {
       statusResumo.textContent = 'Erro: ' + r.erro + ' — o backend está rodando?';
       return;

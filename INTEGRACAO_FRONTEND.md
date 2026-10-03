@@ -1,6 +1,6 @@
 #  GUIA DE INTEGRAÇÃO - FRONTEND COM API (SAOPS)
 
-Referência da API REST para o frontend (`Frontend/js/api.js`). Leituras (`GET`) são públicas; escrita (`POST/PUT/DELETE`) exige sessão — sem login retorna `401`.
+Referência da API REST para o frontend (`Frontend/js/api.js`). Leituras de dados pessoais e operações de escrita exigem sessão; sem login retornam `401`. A vitrine e a disponibilidade de horários são públicas.
 
 ---
 
@@ -39,7 +39,7 @@ Deve aparecer (entre outras):
 
 **Método:** `POST`
 
-**URL:** `http://localhost:3000/agendamentos`
+**URL:** `http://localhost:3000/agendamentos` (sessão obrigatória)
 
 > Sem sessão (cookie `saops_token`) → `401 { "erro": "Login necessário." }`.
 
@@ -90,7 +90,7 @@ Deve aparecer (entre outras):
 
 **Método:** `GET`
 
-**URL:** `http://localhost:3000/agendamentos`
+**URL:** `http://localhost:3000/agendamentos` (sessão obrigatória)
 
 **Resposta (Status 200):**
 ```json
@@ -283,24 +283,24 @@ Sessão em cookie `saops_token` (`HttpOnly`, 7 dias). Como o frontend é servido
 |---|---|---|---|
 | POST | `/api/auth/cadastro` | `{nome, email, senha(8–72), telefone?, tipo?}` | `200 + {sucesso, usuario}` / `400` / `409` e-mail em uso |
 | POST | `/api/auth/login` | `{email, senha}` (empresa aceita nome do negócio) | `200` / `401` |
-| POST | `/api/auth/oauth` | `{provider: 'google'\|'microsoft', credential, nonce?}` | `200` / `401` (`id_token` validado) |
+| POST | `/api/auth/oauth` | `{provider: 'google', credential}` | `200` / `401` (`id_token` validado) |
 | POST | `/api/auth/logout` | — | `200` |
 | GET | `/api/auth/eu` | — | `200 + usuario` / `401` |
-| GET | `/api/auth/config` | — | `{googleClientId, microsoftClientId}` |
+| GET | `/api/auth/config` | — | `{googleClientId}` |
 
 Padrão do frontend (`ui.js`): `exigirLogin('login-cliente.html')` guarda `saops_voltar` e redireciona; após entrar, `voltarAposLogin(padrão)` devolve. As funções de escrita de `api.js` retornam `naoAutenticado: true` no `401`.
 
 ---
 
-##  TAREFAS (`/tarefas`)
+##  TAREFAS (`/api/tarefas`)
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| GET | `/tarefas` (`?data=`, `?concluido=0\|1`) | — | Lista ordenada por data/hora |
-| GET | `/tarefas/:id` | — | Detalhe |
-| POST | `/tarefas` | 🔒 | `{titulo, data, hora?, categoria?}` → `201` |
-| PUT | `/tarefas/:id` | 🔒 | Parcial (só envia o que muda; `concluido` estrito) |
-| DELETE | `/tarefas/:id` | 🔒 | Remove |
+| GET | `/api/tarefas` (`?data=`, `?concluido=0\|1`) | 🔒 | Lista ordenada por data/hora |
+| GET | `/api/tarefas/:id` | 🔒 | Detalhe do dono |
+| POST | `/api/tarefas` | 🔒 | `{titulo, data, hora?, categoria?}` → `201` |
+| PUT | `/api/tarefas/:id` | 🔒 | Parcial (só envia o que muda; `concluido` estrito) |
+| DELETE | `/api/tarefas/:id` | 🔒 | Remove |
 
 Categorias: `pessoal casa trabalho estudos saude outro`.
 

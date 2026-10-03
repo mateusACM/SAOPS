@@ -825,16 +825,6 @@ label.linha-toggle {
   transition: background .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
 button.social-btn:hover { background: var(--bg-soft); border-color: var(--muted); box-shadow: var(--shadow); }
-.social-btn .icone-ms {
-  display: inline-grid;
-  grid-template-columns: 8px 8px;
-  gap: 2px;
-}
-.social-btn .icone-ms i { width: 8px; height: 8px; display: block; }
-.social-btn .icone-ms i:nth-child(1) { background: #f25022; }
-.social-btn .icone-ms i:nth-child(2) { background: #7fba00; }
-.social-btn .icone-ms i:nth-child(3) { background: #00a4ef; }
-.social-btn .icone-ms i:nth-child(4) { background: #ffb900; }
 
 /* ---------- Animações e carregamento ---------- */
 @keyframes fadeUp {

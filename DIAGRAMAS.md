@@ -9,7 +9,7 @@ Arquitetura, banco de dados e fluxos do sistema em [Mermaid](https://mermaid.js.
 ```mermaid
 flowchart LR
     subgraph Navegador
-        P["18 páginas HTML"]
+        P["19 páginas HTML"]
         JS["js: api, ui, tema, lembretes, social, toast"]
         SW["Service Worker - futuro: push em 2o plano"]
     end
@@ -24,7 +24,6 @@ flowchart LR
     end
     subgraph IdPs
         G["Google tokeninfo"]
-        M["Microsoft JWKS RS256"]
     end
     P --> JS
     JS --> API
@@ -32,7 +31,6 @@ flowchart LR
     API --> DB
     AUTH --> DB
     AUTH -. valida id_token .-> G
-    AUTH -. valida id_token .-> M
     R --> P
     LIM -. protege .-> AUTH
 ```
@@ -52,9 +50,11 @@ erDiagram
         string senha_hash "null se social"
         string telefone
         string tipo "cliente/empresa"
-        string provider "local/google/microsoft"
+        string provider "local/google"
         string provider_id
         string foto
+        string categoria
+        string endereco
     }
     sessoes {
         string token PK
@@ -76,6 +76,8 @@ erDiagram
         string data "YYYY-MM-DD"
         string horario "HH:MM"
         string status "agendado, confirmado, concluido, cancelado"
+        int usuario_id FK
+        int prestador_id FK
     }
     tarefas {
         int id PK
@@ -84,10 +86,11 @@ erDiagram
         string hora
         string categoria
         int concluido "0/1"
+        int usuario_id FK
     }
 ```
 
-> Índices: `UNIQUE(data, horario)` em agendamentos (anti double-booking) + índices em `sessoes(expira_em, usuario_id)`. `agendamentos` e `tarefas` são globais (sem dono) — herança do TCC.
+> Índices: `UNIQUE(prestador_id, data, horario)` em agendamentos (anti double-booking por negócio) + índices em `sessoes(expira_em, usuario_id)`. `agendamentos` pertencem ao cliente e ao prestador; tarefas pertencem ao usuário.
 
 ---
 
@@ -143,20 +146,19 @@ sequenceDiagram
 
 ---
 
-## 5. Login social (Google / Microsoft)
+## 5. Login social (Google)
 
 ```mermaid
 sequenceDiagram
     actor U as Usuário
     participant S as social.js
-    participant IdP as Google / Microsoft
+    participant IdP as Google
     participant API as POST /api/auth/oauth
     U->>S: clica no botão social
-    S->>IdP: botão GIS / popup + nonce
+    S->>IdP: botão GIS
     IdP-->>S: id_token
-    S->>API: {provider, credential, nonce?}
+    S->>API: {provider: 'google', credential}
     API->>IdP: valida Google via tokeninfo (aud, iss, email verificado)
-    API->>IdP: valida Microsoft via JWKS RS256 (aud, iss, exp, nonce)
     alt provider_id conhecido
         API-->>S: sessão existente
     else e-mail verificado já cadastrado
@@ -236,7 +238,7 @@ mindmap
         Conta
             Login cliente e empresa
             Cadastro cliente e empresa
-            Login social Google e Microsoft
+            Login social Google
         Organização
             Tarefas com categorias
             Sobre nós

@@ -47,7 +47,7 @@ O projeto nasceu como TCC de agendamento (`364c3bc`, mar/2026): API Express + SQ
 
 **O que foi feito** (`8286da4`):
 - `sobre-nos.html`: equipe (Mateus/Gustavo/Pedro), stats, features, techs
-- **Auth de verdade** (antes era só `localStorage`): `Backend/auth.js` com cadastro/login/logout/`eu`, tabelas `usuarios` + `sessoes`, senha com bcrypt, cookie `saops_token` (`HttpOnly`, 7 dias) + **OAuth Google** (GIS) e **Microsoft** (popup + nonce, JWKS RS256)
+- **Auth de verdade** (antes era só `localStorage`): `Backend/auth.js` com cadastro/login/logout/`eu`, tabelas `usuarios` + `sessoes`, senha com bcrypt, cookie `saops_token` (`HttpOnly`, 7 dias) + **OAuth Google** (GIS)
 
 ## 5. Rename PGENFMA → SAOPS
 
@@ -90,7 +90,7 @@ Decisão do usuário na Fase 4: CRUD continua público? **Não — proteger com 
 
 ## 12. Serviços de verdade
 
-**O que foi feito** (`407f5d6` — 29/set): a página `gerenciar-servicos` era mock (botões mortos). Virou CRUD real com tabela `servicos` (dono, nome, descrição, preço, duração): vitrine pública + `/meus`, escrita com login e **só o dono altera** (alheio → 404). Limite assumido: a reserva ainda usa serviços mock (ligar os dois exige modelar o prestador).
+**O que foi feito** (`407f5d6` — 29/set): a página `gerenciar-servicos` era mock (botões mortos). Virou CRUD real com tabela `servicos` (dono, nome, descrição, preço, duração): vitrine pública + `/meus`, escrita com login e **só o dono altera** (alheio → 404). O fluxo de reserva agora usa os serviços e o perfil reais do prestador.
 
 ## 13. Documentação e licença
 
@@ -102,6 +102,6 @@ Decisão do usuário na Fase 4: CRUD continua público? **Não — proteger com 
 
 **No ar:** https://saops-zjyx.onrender.com/ — 18 páginas, auth local + social (quando configurado), 24 endpoints, tudo verificado em produção a cada entrega.
 
-**Falta (ações do usuário):** criar os apps OAuth (Google/Azure) e setar `GOOGLE_CLIENT_ID`/`MICROSOFT_CLIENT_ID` no Render · clicar **Verificar** no Search Console + enviar o sitemap · deletar o serviço `pgenfma` antigo (se ainda existir).
+**Falta (ações do usuário):** criar o app OAuth (Google) e setar `GOOGLE_CLIENT_ID` no Render · clicar **Verificar** no Search Console + enviar o sitemap · deletar o serviço `pgenfma` antigo (se ainda existir).
 
 **Futuro sugerido:** push em 2º plano (Service Worker + Web Push), reserva ligada aos serviços reais, avaliações de prestadores, exportar `.ics`/Google Agenda, paginação, PostgreSQL.

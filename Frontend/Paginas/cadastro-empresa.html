@@ -55,9 +55,6 @@
         <option value="outro">Outro</option>
       </select>
 
-      <label for="txt_cnpj_cadastro_empresa">CNPJ</label>
-      <input type="text" id="txt_cnpj_cadastro_empresa" name="cnpj" placeholder="00.000.000/0000-00" required>
-
       <label for="txt_endereco_cadastro_empresa">Endereço</label>
       <input type="text" id="txt_endereco_cadastro_empresa" name="endereco" placeholder="Rua, número, bairro" required>
 
@@ -65,7 +62,7 @@
       <input type="email" id="txt_email_cadastro_empresa" name="email" placeholder="empresa@email.com" required>
 
       <label for="txt_senha_cadastro_empresa">Senha</label>
-      <input type="password" id="txt_senha_cadastro_empresa" name="senha" placeholder="********" required>
+      <input type="password" id="txt_senha_cadastro_empresa" name="senha" placeholder="Mínimo 8 caracteres" minlength="8" maxlength="72" required>
 
       <button type="submit" id="btn_cadastrar_negocio">Cadastrar negócio</button>
     </form>
@@ -84,7 +81,6 @@
     const erro = document.getElementById('erro_cadastro');
     const negocio = document.getElementById('txt_nome_negocio_cadastro_empresa').value.trim();
     const categoria = document.getElementById('txt_categoria_cadastro_empresa').value;
-    const cnpj = document.getElementById('txt_cnpj_cadastro_empresa').value.trim();
     const endereco = document.getElementById('txt_endereco_cadastro_empresa').value.trim();
     const email = document.getElementById('txt_email_cadastro_empresa').value.trim().toLowerCase();
     const senha = document.getElementById('txt_senha_cadastro_empresa').value;
@@ -94,15 +90,15 @@
       erro.textContent = 'Escolha a categoria do negócio.';
       return;
     }
-    if (senha.length < 4) {
+    if (senha.length < 8) {
       erro.hidden = false;
-      erro.textContent = 'A senha deve ter ao menos 4 caracteres.';
+      erro.textContent = 'A senha deve ter ao menos 8 caracteres.';
       return;
     }
 
     const btn = document.getElementById('btn_cadastrar_negocio');
     btn.disabled = true;
-    const r = await cadastrarConta({ nome: negocio, email, senha, tipo: 'empresa' });
+    const r = await cadastrarConta({ nome: negocio, email, senha, tipo: 'empresa', categoria, endereco });
     btn.disabled = false;
 
     if (!r.sucesso) {
@@ -110,8 +106,6 @@
       erro.textContent = r.erro;
       return;
     }
-    // Dados do negócio (sem senha!) continuam locais
-    localStorage.setItem('saops_empresa', JSON.stringify({ negocio, categoria, cnpj, endereco, email }));
     salvarSessaoLocal(r.usuario);
     toast('Negócio cadastrado!', 'sucesso');
     setTimeout(() => { window.location.href = voltarAposLogin('painel-prestador.html'); }, 400);
