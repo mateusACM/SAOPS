@@ -42,7 +42,7 @@
 
   <main>
     <p id="erro_login" class="erro-msg" hidden></p>
-    <form id="form_login_empresa" action="agenda-prestador.html" method="get">
+    <form id="form_login_empresa" action="painel-prestador.html" method="get">
       <label for="txt_identificador_login_empresa">E-mail ou CNPJ</label>
       <input type="text" id="txt_identificador_login_empresa" name="identificador" placeholder="empresa@email.com" required>
 
@@ -88,10 +88,10 @@
       return;
     }
     salvarSessaoLocal(r.usuario);
-    window.location.href = voltarAposLogin('agenda-prestador.html');
+    window.location.href = voltarAposLogin('painel-prestador.html');
   });
 
-  iniciarLoginSocial({ destino: 'agenda-prestador.html' });
+  iniciarLoginSocial({ destino: 'painel-prestador.html' });
 </script>
 
 <script src="../js/tema.js"></script>

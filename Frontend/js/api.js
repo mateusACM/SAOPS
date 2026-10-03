@@ -64,6 +64,25 @@ async function listarAgendamentos() {
 }
 
 // ==========================================
+// LISTAR MEUS AGENDAMENTOS (só os da conta logada)
+// ==========================================
+
+async function listarMeusAgendamentos() {
+    try {
+        const response = await fetch(`${API_URL}/agendamentos/meus`);
+        const data = await response.json();
+
+        if (response.ok) {
+            return { sucesso: true, dados: data.agendamentos };
+        } else {
+            return { sucesso: false, erro: data.erro, naoAutenticado: response.status === 401 };
+        }
+    } catch (error) {
+        return { sucesso: false, erro: error.message };
+    }
+}
+
+// ==========================================
 // BUSCAR AGENDAMENTO POR ID
 // ==========================================
 

@@ -102,6 +102,10 @@
 <script src="../js/api.js"></script>
 <script src="../js/lembretes.js"></script>
 <script>
+  // ---------- Login obrigatório ----------
+  // Sem sessão: salva a página de volta e redireciona pro login
+  exigirLogin('login-cliente.html');
+
   // ---------- Avatar / foto ----------
   const avatarGrande = document.getElementById('avatar_grande');
   const nomeInput = document.getElementById('txt_nome_perfil');
@@ -218,30 +222,28 @@
     carregar();
   });
 
-  // ---------- Agendamentos ----------
+  // ---------- Agendamentos (só os da minha conta) ----------
   async function carregar() {
     const status = document.getElementById('status_perfil');
     const lista = document.getElementById('lista_perfil');
-    status.textContent = '';
+    status.textContent = 'Carregando...';
     lista.innerHTML = esqueleto(2);
-    const nome = (localStorage.getItem('nome_cliente') || '').toLowerCase();
-    const r = await listarAgendamentos();
+    const r = await listarMeusAgendamentos();
+    if (r.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
     if (!r.sucesso) {
-      lista.innerHTML = '<div class="vazio">Erro: ' + esc(r.erro) + ' — o backend está rodando?</div>';
       status.textContent = '';
+      lista.innerHTML = '<div class="vazio">Erro: ' + esc(r.erro) + ' — o backend está rodando?</div>';
       return;
     }
-    const meus = nome ? r.dados.filter((a) => String(a.nome_cliente || '').toLowerCase() === nome) : r.dados;
-    if (!meus.length) {
+    if (!r.dados.length) {
       status.textContent = '';
       lista.innerHTML = '<div class="vazio"><span class="vazio-ico">📅</span>' +
-        (nome ? 'Nenhum agendamento seu por aqui. Que tal marcar um?' : 'Salve seu nome acima para filtrar seus agendamentos.') +
-        '</div>';
+        'Nenhum agendamento seu por aqui. Que tal marcar um?</div>';
       return;
     }
     status.textContent = '';
     lista.innerHTML = '';
-    meus.forEach((a) => {
+    r.dados.forEach((a) => {
       const li = document.createElement('li');
       li.innerHTML = '<div><p>' + esc(a.servico) + '</p>' +
         '<p class="t-meta">' + a.data.split('-').reverse().join('/') + ' às ' + a.horario + '</p></div>' +

@@ -6,6 +6,24 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.0] - 2026-10-03
+
+### Adicionado
+- **Botão "Entrar" na página inicial** (vira "Meu perfil" quando já existe sessão)
+- **Painel do prestador** (`/painel-prestador`): cards de hoje / semana (seg–dom) / pendentes, contagem por status, lista do dia e ações rápidas — novo destino do login e do cadastro de empresa
+- `GET /agendamentos/meus` 🔒 — só os agendamentos da conta logada (`401` sem sessão) + `listarMeusAgendamentos()` no frontend
+- Coluna `usuario_id` em `agendamentos` (schema + índice + backfill por nome): toda criação grava o dono do agendamento
+
+### Alterado
+- **Perfil exige login**: sem sessão redireciona para o login com volta automática; a lista deixou de "todos do banco filtrados pelo nome no navegador" e passou a ser "só os meus", filtrada no servidor
+- `login-empresa.html` e `cadastro-empresa.html` agora levam ao painel do prestador (e o link "Painel" entrou na agenda)
+
+### Corrigido
+- **Calendário não pisca mais ao clicar num dia**: a seleção é aplicada no lugar, sem redesenhar a grade inteira
+- Esqueleto de carregamento só na primeira carga — recarregar (após cancelar/concluir) não troca mais a grade por um flash
+
+---
+
 ## [1.2.0] - 2026-10-03
 
 ### Adicionado

@@ -122,6 +122,43 @@ Deve aparecer (entre outras):
 
 ---
 
+### 2b LISTAR MEUS AGENDAMENTOS 🔒 (exige login)
+
+Só os agendamentos da conta logada (por `usuario_id`, com fallback pelo nome da conta). Sem sessão responde `401`.
+
+**Método:** `GET`
+
+**URL:** `http://localhost:3000/agendamentos/meus`
+
+**Resposta (Status 200):**
+```json
+{
+  "mensagem": " Meus agendamentos",
+  "total": 1,
+  "agendamentos": [
+    {
+      "id": 1,
+      "nome_cliente": "João Silva",
+      "servico": "Corte de Cabelo",
+      "data": "2024-04-20",
+      "horario": "14:00",
+      "telefone": null,
+      "status": "agendado",
+      "usuario_id": 3
+    }
+  ]
+}
+```
+
+**Sem sessão (Status 401):**
+```json
+{ "sucesso": false, "erro": "Login necessário." }
+```
+
+Frontend: `listarMeusAgendamentos()` em `js/api.js` (usado pela página de perfil).
+
+---
+
 ### 3 BUSCAR AGENDAMENTO POR ID
 
 **Método:** `GET`
