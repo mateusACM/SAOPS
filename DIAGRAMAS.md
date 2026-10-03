@@ -20,7 +20,7 @@ flowchart LR
         LIM["Rate-limit no /api/auth"]
     end
     subgraph Dados
-        DB[("SQLite agendamento.db")]
+        DB[("PostgreSQL (Supabase)")]
     end
     subgraph IdPs
         G["Google tokeninfo"]
@@ -100,7 +100,7 @@ sequenceDiagram
     participant UI as exigirLogin()
     participant L as login-cliente.html
     participant API as POST /agendamentos
-    participant DB as SQLite
+    participant DB as PostgreSQL
     C->>A: escolhe serviço, dia e horário
     A->>UI: exigirLogin()
     alt sem sessão
@@ -127,7 +127,7 @@ sequenceDiagram
     actor U as Usuário
     participant F as login-*.html
     participant API as POST /api/auth/login
-    participant DB as SQLite
+    participant DB as PostgreSQL
     U->>F: e-mail (+ nome do negócio, se empresa) e senha
     F->>API: e-mail e senha
     API->>DB: busca por email (bcrypt.compare)

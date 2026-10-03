@@ -1,12 +1,23 @@
 // Importa as bibliotecas
-require('dotenv').config(); // variáveis do Backend/.env (local) — no Render vêm do dashboard
+// variáveis de Backend/.env (local) — no Render vêm do dashboard
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
-const db = require('./database'); // Importa o banco de dados
+const { q, qGet, qAll } = require('./database'); // helpers do PostgreSQL
 const rateLimit = require('express-rate-limit');
 const { exigirLogin } = require('./auth'); // escrita exige sessão (401 senão)
+
+// Id de rota precisa ser numérico (no SQLite não achava e dava 404;
+// no PostgreSQL um valor não numérico daria erro de tipo -> guardamos antes)
+const idInvalido = (v) => !/^\d{1,18}$/.test(String(v));
+
+// Resposta única de erro interno (nunca vaza o detalhe do banco)
+const erro500 = (res, e) => {
+    console.error('Erro interno:', e.message);
+    return res.status(500).json({ erro: 'Erro interno do servidor' });
+};
 
 // Freio contra força bruta no login/cadastro/OAuth (100 tentativas / 15 min por IP)
 const authLimiter = rateLimit({
@@ -103,7 +114,7 @@ app.get('/api/status', (req, res) => {
 // ========================================
 // CREATE - Criar novo agendamento (COM VALIDAÇÕES!)
 // ========================================
-app.post('/agendamentos', exigirLogin, (req, res) => {
+app.post('/agendamentos', exigirLogin, async (req, res) => {
     const { nome_cliente, servico, data, horario, telefone, status } = req.body;
 
     // VALIDAÇÃO 1: Campos obrigatórios
@@ -157,15 +168,10 @@ app.post('/agendamentos', exigirLogin, (req, res) => {
     }
 
     // VALIDAÇÃO 7: Verificar se já existe agendamento no mesmo horário
-    const sqlVerifica = 'SELECT * FROM agendamentos WHERE data = ? AND horario = ?';
-    
-    db.get(sqlVerifica, [data, horario], (err, row) => {
-        if (err) {
-            console.error('Erro interno:', err.message);
-            return res.status(500).json({ erro: 'Erro interno do servidor' });
-        }
-        
-        if (row) {
+    try {
+        const existente = await qGet('SELECT * FROM agendamentos WHERE data = $1 AND horario = $2', [data, horario]);
+
+        if (existente) {
             return res.status(409).json({
                 erro: `Já existe um agendamento para ${data} às ${horario}. Escolha outro horário.`
             });
@@ -173,37 +179,34 @@ app.post('/agendamentos', exigirLogin, (req, res) => {
 
         // Se passou em todas as validações, insere no banco
         const sql = `INSERT INTO agendamentos (nome_cliente, servico, data, horario, telefone, status)
-                     VALUES (?, ?, ?, ?, ?, ?)`;
+                     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`;
 
-        db.run(sql, [String(nome_cliente).trim(), String(servico).trim(), data, horario, telefone || null, statusFinal], function(err) {
-            if (err) {
-                if (err.code === 'SQLITE_CONSTRAINT') {
-                    return res.status(409).json({
-                        erro: `Já existe um agendamento para ${data} às ${horario}. Escolha outro horário.`
-                    });
-                }
-                console.error('Erro interno:', err.message);
-                return res.status(500).json({ erro: 'Erro interno do servidor' });
+        const criado = await q(sql, [String(nome_cliente).trim(), String(servico).trim(), data, horario, telefone || null, statusFinal]);
+        res.status(201).json({ 
+            mensagem: ' Agendamento criado com sucesso!',
+            id: criado.rows[0].id,
+            detalhes: {
+                nome_cliente,
+                servico,
+                data,
+                horario,
+                status: statusFinal
             }
-            res.status(201).json({ 
-                mensagem: ' Agendamento criado com sucesso!',
-                id: this.lastID,
-                detalhes: {
-                    nome_cliente,
-                    servico,
-                    data,
-                    horario,
-                    status: statusFinal
-                }
-            });
         });
-    });
+    } catch (e) {
+        if (e.code === '23505') { // corrida: outro request pegou o horário primeiro
+            return res.status(409).json({
+                erro: `Já existe um agendamento para ${data} às ${horario}. Escolha outro horário.`
+            });
+        }
+        erro500(res, e);
+    }
 });
 
 
 // READ - Listar todos os agendamentos
 
-app.get('/agendamentos', (req, res) => {
+app.get('/agendamentos', async (req, res) => {
     // PEGAR OS PARÂMETROS DA URL
     const sort = req.query.sort || 'id';      // Padrão: ordenar por ID
     const order = req.query.order || 'asc';   // Padrão: crescente
@@ -228,11 +231,8 @@ app.get('/agendamentos', (req, res) => {
     const query = `SELECT * FROM agendamentos ORDER BY ${sort} ${order.toUpperCase()}`;
 
     // EXECUTAR A QUERY
-    db.all(query, (err, rows) => {
-        if (err) {
-            console.error('Erro interno:', err.message);
-            return res.status(500).json({ erro: 'Erro interno do servidor' });
-        }
+    try {
+        const rows = await qAll(query);
         res.json({
             mensagem: ' Lista de agendamentos',
             total: rows.length,
@@ -240,11 +240,11 @@ app.get('/agendamentos', (req, res) => {
             ordem: order,
             agendamentos: rows
         });
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 // ROTA NOVA: Ordenação por parâmetros na URL 
-app.get('/agendamentos/sorted/:field/:order', (req, res) => {
+app.get('/agendamentos/sorted/:field/:order', async (req, res) => {
     // PEGAR OS PARÂMETROS DA URL
     const field = req.params.field;    // Ex: horario, nome_cliente, data
     const order = req.params.order;    // Ex: asc, desc
@@ -269,11 +269,8 @@ app.get('/agendamentos/sorted/:field/:order', (req, res) => {
     const query = `SELECT * FROM agendamentos ORDER BY ${field} ${order.toUpperCase()}`;
 
     // EXECUTAR A QUERY
-    db.all(query, (err, rows) => {
-        if (err) {
-            console.error('Erro interno:', err.message);
-            return res.status(500).json({ erro: 'Erro interno do servidor' });
-        }
+    try {
+        const rows = await qAll(query);
         res.json({
             mensagem: ' Lista ordenada de agendamentos',
             total: rows.length,
@@ -281,29 +278,25 @@ app.get('/agendamentos/sorted/:field/:order', (req, res) => {
             ordem: order,
             agendamentos: rows
         });
-    });
+    } catch (e) { erro500(res, e); }
 });
 // READ - Buscar agendamento por ID
 
-app.get('/agendamentos/:id', (req, res) => {
+app.get('/agendamentos/:id', async (req, res) => {
     const { id } = req.params;
-    const sql = 'SELECT * FROM agendamentos WHERE id = ?';
-
-    db.get(sql, [id], (err, row) => {
-        if (err) {
-            console.error('Erro interno:', err.message);
-            return res.status(500).json({ erro: 'Erro interno do servidor' });
-        }
+    if (idInvalido(id)) return res.status(404).json({ erro: 'Agendamento não encontrado' });
+    try {
+        const row = await qGet('SELECT * FROM agendamentos WHERE id = $1', [id]);
         if (!row) {
             return res.status(404).json({ erro: 'Agendamento não encontrado' });
         }
         res.json(row);
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 // READ - Buscar agendamentos por data
 
-app.get('/agendamentos/data/:data', (req, res) => {
+app.get('/agendamentos/data/:data', async (req, res) => {
     const { data } = req.params;
     
     // Valida formato da data
@@ -313,28 +306,24 @@ app.get('/agendamentos/data/:data', (req, res) => {
         });
     }
     
-    const sql = 'SELECT * FROM agendamentos WHERE data = ? ORDER BY horario';
-
-    db.all(sql, [data], (err, rows) => {
-        if (err) {
-            console.error('Erro interno:', err.message);
-            return res.status(500).json({ erro: 'Erro interno do servidor' });
-        }
+    try {
+        const rows = await qAll('SELECT * FROM agendamentos WHERE data = $1 ORDER BY horario', [data]);
         res.json({
             mensagem: ` Agendamentos para ${data}`,
             total: rows.length,
             agendamentos: rows
         });
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 
 // UPDATE - Atualizar agendamento 
 
 
-app.put('/agendamentos/:id', exigirLogin, (req, res) => {
+app.put('/agendamentos/:id', exigirLogin, async (req, res) => {
     const { id } = req.params;
     const { nome_cliente, servico, data, horario, telefone, status } = req.body;
+    if (idInvalido(id)) return res.status(404).json({ erro: 'Agendamento não encontrado' });
 
     // VALIDAÇÃO 1: Campos obrigatórios
     if (!nome_cliente || !servico || !data || !horario) {
@@ -374,11 +363,8 @@ app.put('/agendamentos/:id', exigirLogin, (req, res) => {
 
     // Busca o registro atual: data passada só pode mudar de status,
     // e a checagem de conflito só importa se dia/horário mudaram
-    db.get('SELECT data, horario FROM agendamentos WHERE id = ?', [id], (err0, atual) => {
-        if (err0) {
-            console.error('Erro interno:', err0.message);
-            return res.status(500).json({ erro: 'Erro interno do servidor' });
-        }
+    try {
+        const atual = await qGet('SELECT data, horario FROM agendamentos WHERE id = $1', [id]);
         if (!atual) {
             return res.status(404).json({ erro: 'Agendamento não encontrado' });
         }
@@ -390,74 +376,59 @@ app.put('/agendamentos/:id', exigirLogin, (req, res) => {
             });
         }
 
-        const prosseguir = () => {
-            const sql = `UPDATE agendamentos
-                         SET nome_cliente = ?, servico = ?, data = ?, horario = ?, telefone = ?, status = ?
-                         WHERE id = ?`;
-
-            db.run(sql, [nome_cliente, servico, data, horario, telefone || null, statusFinal, id], function(err) {
-                if (err) {
-                    if (err.code === 'SQLITE_CONSTRAINT') {
-                        return res.status(409).json({
-                            erro: `Já existe outro agendamento para ${data} às ${horario}`
-                        });
-                    }
-                    console.error('Erro interno:', err.message);
-                    return res.status(500).json({ erro: 'Erro interno do servidor' });
-                }
-                res.json({
-                    mensagem: ' Agendamento atualizado com sucesso!',
-                    detalhes: {
-                        id,
-                        nome_cliente,
-                        data,
-                        horario,
-                        status: statusFinal
-                    }
-                });
-            });
-        };
-
-        if (!mudouQuando) return prosseguir();
-
         // Verifica se já existe outro agendamento no mesmo horário (exceto o próprio)
-        const sqlVerifica = 'SELECT * FROM agendamentos WHERE data = ? AND horario = ? AND id != ?';
-
-        db.get(sqlVerifica, [data, horario, id], (err, row) => {
-            if (err) {
-                console.error('Erro interno:', err.message);
-                return res.status(500).json({ erro: 'Erro interno do servidor' });
-            }
-
-            if (row) {
+        if (mudouQuando) {
+            const conflito = await qGet(
+                'SELECT * FROM agendamentos WHERE data = $1 AND horario = $2 AND id != $3',
+                [data, horario, id]
+            );
+            if (conflito) {
                 return res.status(409).json({
                     erro: `Já existe outro agendamento para ${data} às ${horario}`
                 });
             }
-            prosseguir();
+        }
+
+        const sql = `UPDATE agendamentos
+                     SET nome_cliente = $1, servico = $2, data = $3, horario = $4, telefone = $5, status = $6
+                     WHERE id = $7`;
+
+        await q(sql, [nome_cliente, servico, data, horario, telefone || null, statusFinal, id]);
+        res.json({
+            mensagem: ' Agendamento atualizado com sucesso!',
+            detalhes: {
+                id,
+                nome_cliente,
+                data,
+                horario,
+                status: statusFinal
+            }
         });
-    });
+    } catch (e) {
+        if (e.code === '23505') { // corrida no índice único data+horario
+            return res.status(409).json({
+                erro: `Já existe outro agendamento para ${data} às ${horario}`
+            });
+        }
+        erro500(res, e);
+    }
 });
 
 // DELETE - Deletar agendamento
 
-app.delete('/agendamentos/:id', exigirLogin, (req, res) => {
+app.delete('/agendamentos/:id', exigirLogin, async (req, res) => {
     const { id } = req.params;
-    const sql = 'DELETE FROM agendamentos WHERE id = ?';
-
-    db.run(sql, [id], function(err) {
-        if (err) {
-            console.error('Erro interno:', err.message);
-            return res.status(500).json({ erro: 'Erro interno do servidor' });
-        }
-        if (this.changes === 0) {
+    if (idInvalido(id)) return res.status(404).json({ erro: 'Agendamento não encontrado' });
+    try {
+        const r = await q('DELETE FROM agendamentos WHERE id = $1', [id]);
+        if (r.rowCount === 0) {
             return res.status(404).json({ erro: 'Agendamento não encontrado' });
         }
         res.json({ 
             mensagem: ' Agendamento deletado com sucesso!',
             id_deletado: id
         });
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 
@@ -468,7 +439,7 @@ app.delete('/agendamentos/:id', exigirLogin, (req, res) => {
 const CATEGORIAS_TAREFA = ['pessoal', 'casa', 'trabalho', 'estudos', 'saude', 'outro'];
 
 // LISTAR tarefas (opcional ?data= e ?concluido=0|1)
-app.get('/tarefas', (req, res) => {
+app.get('/tarefas', async (req, res) => {
     const { data, concluido } = req.query;
     if (data && !validarData(data)) {
         return res.status(400).json({ erro: 'Formato de data inválido. Use YYYY-MM-DD' });
@@ -476,30 +447,31 @@ app.get('/tarefas', (req, res) => {
 
     const filtros = [];
     const params = [];
-    if (data) { filtros.push('data = ?'); params.push(data); }
-    if (concluido === '0' || concluido === '1') { filtros.push('concluido = ?'); params.push(Number(concluido)); }
+    if (data) { filtros.push(`data = $${params.length + 1}`); params.push(data); }
+    if (concluido === '0' || concluido === '1') { filtros.push(`concluido = $${params.length + 1}`); params.push(Number(concluido)); }
 
     const where = filtros.length ? ' WHERE ' + filtros.join(' AND ') : '';
     const sql = `SELECT * FROM tarefas${where} ORDER BY data ASC,
                  CASE WHEN hora IS NULL OR hora = '' THEN 1 ELSE 0 END, hora ASC`;
 
-    db.all(sql, params, (err, rows) => {
-        if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+    try {
+        const rows = await qAll(sql, params);
         res.json({ mensagem: ' Lista de tarefas', total: rows.length, tarefas: rows });
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 // BUSCAR tarefa por ID
-app.get('/tarefas/:id', (req, res) => {
-    db.get('SELECT * FROM tarefas WHERE id = ?', [req.params.id], (err, row) => {
-        if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+app.get('/tarefas/:id', async (req, res) => {
+    if (idInvalido(req.params.id)) return res.status(404).json({ erro: 'Tarefa não encontrada' });
+    try {
+        const row = await qGet('SELECT * FROM tarefas WHERE id = $1', [req.params.id]);
         if (!row) return res.status(404).json({ erro: 'Tarefa não encontrada' });
         res.json(row);
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 // CRIAR tarefa
-app.post('/tarefas', exigirLogin, (req, res) => {
+app.post('/tarefas', exigirLogin, async (req, res) => {
     const { titulo, data, hora, categoria } = req.body;
 
     if (!titulo || !String(titulo).trim()) {
@@ -519,24 +491,25 @@ app.post('/tarefas', exigirLogin, (req, res) => {
         return res.status(400).json({ erro: `Categoria inválida. Use: ${CATEGORIAS_TAREFA.join(', ')}` });
     }
 
-    const sql = 'INSERT INTO tarefas (titulo, data, hora, categoria) VALUES (?, ?, ?, ?)';
-    db.run(sql, [String(titulo).trim(), data, hora || null, cat], function (err) {
-        if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+    const sql = 'INSERT INTO tarefas (titulo, data, hora, categoria) VALUES ($1, $2, $3, $4) RETURNING id';
+    try {
+        const criado = await q(sql, [String(titulo).trim(), data, hora || null, cat]);
         res.status(201).json({
             mensagem: ' Tarefa criada com sucesso!',
-            id: this.lastID,
+            id: criado.rows[0].id,
             detalhes: { titulo: String(titulo).trim(), data, hora: hora || null, categoria: cat }
         });
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 // ATUALIZAR tarefa (título, data, hora, categoria, concluido)
-app.put('/tarefas/:id', exigirLogin, (req, res) => {
+app.put('/tarefas/:id', exigirLogin, async (req, res) => {
     const { id } = req.params;
     const { titulo, data, hora, categoria, concluido } = req.body;
+    if (idInvalido(id)) return res.status(404).json({ erro: 'Tarefa não encontrada' });
 
-    db.get('SELECT * FROM tarefas WHERE id = ?', [id], (err, row) => {
-        if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+    try {
+        const row = await qGet('SELECT * FROM tarefas WHERE id = $1', [id]);
         if (!row) return res.status(404).json({ erro: 'Tarefa não encontrada' });
 
         const novoTitulo = titulo === undefined ? row.titulo : String(titulo).trim();
@@ -552,24 +525,23 @@ app.put('/tarefas/:id', exigirLogin, (req, res) => {
             return res.status(400).json({ erro: `Categoria inválida. Use: ${CATEGORIAS_TAREFA.join(', ')}` });
         }
 
-        const sql = `UPDATE tarefas SET titulo = ?, data = ?, hora = ?, categoria = ?, concluido = ? WHERE id = ?`;
-        db.run(sql, [novoTitulo, novaData, novaHora, novaCat, novoConcluido, id], function (err2) {
-            if (err2) { console.error('Erro interno:', err2.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
-            res.json({
-                mensagem: ' Tarefa atualizada com sucesso!',
-                detalhes: { id, titulo: novoTitulo, data: novaData, hora: novaHora, categoria: novaCat, concluido: novoConcluido }
-            });
+        const sql = `UPDATE tarefas SET titulo = $1, data = $2, hora = $3, categoria = $4, concluido = $5 WHERE id = $6`;
+        await q(sql, [novoTitulo, novaData, novaHora, novaCat, novoConcluido, id]);
+        res.json({
+            mensagem: ' Tarefa atualizada com sucesso!',
+            detalhes: { id, titulo: novoTitulo, data: novaData, hora: novaHora, categoria: novaCat, concluido: novoConcluido }
         });
-    });
+    } catch (e) { erro500(res, e); }
 });
 
-// DELETAR tarefa
-app.delete('/tarefas/:id', (req, res) => {
-    db.run('DELETE FROM tarefas WHERE id = ?', [req.params.id], function (err) {
-        if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
-        if (this.changes === 0) return res.status(404).json({ erro: 'Tarefa não encontrada' });
+// DELETAR tarefa (escrita exige login, como as demais)
+app.delete('/tarefas/:id', exigirLogin, async (req, res) => {
+    if (idInvalido(req.params.id)) return res.status(404).json({ erro: 'Tarefa não encontrada' });
+    try {
+        const r = await q('DELETE FROM tarefas WHERE id = $1', [req.params.id]);
+        if (r.rowCount === 0) return res.status(404).json({ erro: 'Tarefa não encontrada' });
         res.json({ mensagem: ' Tarefa excluída com sucesso!', id_deletado: req.params.id });
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 
@@ -603,66 +575,63 @@ function normalizarServico({ nome, descricao, preco, duracao_min }) {
 }
 
 // LISTAR todos (público — vitrine)
-app.get('/servicos', (req, res) => {
-    db.all(
-        'SELECT s.*, u.nome AS prestador FROM servicos s JOIN usuarios u ON u.id = s.usuario_id ORDER BY s.nome',
-        (err, rows) => {
-            if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
-            res.json({ mensagem: ' Lista de serviços', total: rows.length, servicos: rows });
-        }
-    );
+app.get('/servicos', async (req, res) => {
+    try {
+        const rows = await qAll('SELECT s.*, u.nome AS prestador FROM servicos s JOIN usuarios u ON u.id = s.usuario_id ORDER BY s.nome');
+        res.json({ mensagem: ' Lista de serviços', total: rows.length, servicos: rows });
+    } catch (e) { erro500(res, e); }
 });
 
 // LISTAR os meus (dono logado)
-app.get('/servicos/meus', exigirLogin, (req, res) => {
-    db.all('SELECT * FROM servicos WHERE usuario_id = ? ORDER BY nome', [req.usuario.id], (err, rows) => {
-        if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
+app.get('/servicos/meus', exigirLogin, async (req, res) => {
+    try {
+        const rows = await qAll('SELECT * FROM servicos WHERE usuario_id = $1 ORDER BY nome', [req.usuario.id]);
         res.json({ mensagem: ' Meus serviços', total: rows.length, servicos: rows });
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 // CRIAR (dono = usuário logado)
-app.post('/servicos', exigirLogin, (req, res) => {
+app.post('/servicos', exigirLogin, async (req, res) => {
     const erro = validarServico(req.body || {});
     if (erro) return res.status(400).json({ erro });
     const n = normalizarServico(req.body);
-    db.run(
-        'INSERT INTO servicos (usuario_id, nome, descricao, preco, duracao_min) VALUES (?, ?, ?, ?, ?)',
-        [req.usuario.id, n.nome, n.descricao, n.preco, n.duracao_min],
-        function (err) {
-            if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
-            res.status(201).json({
-                mensagem: ' Serviço criado com sucesso!',
-                id: this.lastID,
-                detalhes: { id: this.lastID, ...n }
-            });
-        }
-    );
+    try {
+        const criado = await q(
+            'INSERT INTO servicos (usuario_id, nome, descricao, preco, duracao_min) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+            [req.usuario.id, n.nome, n.descricao, n.preco, n.duracao_min]
+        );
+        res.status(201).json({
+            mensagem: ' Serviço criado com sucesso!',
+            id: criado.rows[0].id,
+            detalhes: { id: criado.rows[0].id, ...n }
+        });
+    } catch (e) { erro500(res, e); }
 });
 
 // ATUALIZAR (só o dono; de outro dono dá 404 para não revelar existência)
-app.put('/servicos/:id', exigirLogin, (req, res) => {
+app.put('/servicos/:id', exigirLogin, async (req, res) => {
+    if (idInvalido(req.params.id)) return res.status(404).json({ erro: 'Serviço não encontrado' });
     const erro = validarServico(req.body || {});
     if (erro) return res.status(400).json({ erro });
     const n = normalizarServico(req.body);
-    db.run(
-        'UPDATE servicos SET nome = ?, descricao = ?, preco = ?, duracao_min = ? WHERE id = ? AND usuario_id = ?',
-        [n.nome, n.descricao, n.preco, n.duracao_min, req.params.id, req.usuario.id],
-        function (err) {
-            if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
-            if (this.changes === 0) return res.status(404).json({ erro: 'Serviço não encontrado' });
-            res.json({ mensagem: ' Serviço atualizado com sucesso!', detalhes: { id: Number(req.params.id), ...n } });
-        }
-    );
+    try {
+        const r = await q(
+            'UPDATE servicos SET nome = $1, descricao = $2, preco = $3, duracao_min = $4 WHERE id = $5 AND usuario_id = $6',
+            [n.nome, n.descricao, n.preco, n.duracao_min, req.params.id, req.usuario.id]
+        );
+        if (r.rowCount === 0) return res.status(404).json({ erro: 'Serviço não encontrado' });
+        res.json({ mensagem: ' Serviço atualizado com sucesso!', detalhes: { id: Number(req.params.id), ...n } });
+    } catch (e) { erro500(res, e); }
 });
 
 // DELETAR (só o dono)
-app.delete('/servicos/:id', exigirLogin, (req, res) => {
-    db.run('DELETE FROM servicos WHERE id = ? AND usuario_id = ?', [req.params.id, req.usuario.id], function (err) {
-        if (err) { console.error('Erro interno:', err.message); return res.status(500).json({ erro: 'Erro interno do servidor' }); }
-        if (this.changes === 0) return res.status(404).json({ erro: 'Serviço não encontrado' });
+app.delete('/servicos/:id', exigirLogin, async (req, res) => {
+    if (idInvalido(req.params.id)) return res.status(404).json({ erro: 'Serviço não encontrado' });
+    try {
+        const r = await q('DELETE FROM servicos WHERE id = $1 AND usuario_id = $2', [req.params.id, req.usuario.id]);
+        if (r.rowCount === 0) return res.status(404).json({ erro: 'Serviço não encontrado' });
         res.json({ mensagem: ' Serviço excluído com sucesso!', id_deletado: req.params.id });
-    });
+    } catch (e) { erro500(res, e); }
 });
 
 

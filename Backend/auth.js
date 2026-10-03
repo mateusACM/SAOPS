@@ -5,7 +5,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const db = require('./database');
+const { q, qGet, AGORA_SQL } = require('./database');
 
 const router = express.Router();
 
@@ -34,23 +34,22 @@ function lerCookies(req) {
     return out;
 }
 
-function criarSessao(req, res, usuario) {
-    const token = crypto.randomBytes(32).toString('hex');
-    const expira = new Date(Date.now() + SESSAO_MS).toISOString();
-    db.run(
-        'INSERT INTO sessoes (token, usuario_id, expira_em) VALUES (?, ?, ?)',
-        [token, usuario.id, expira],
-        (err) => {
-            if (err) return res.status(500).json({ sucesso: false, erro: 'Falha ao criar sessão' });
-            res.cookie(COOKIE, token, {
-                httpOnly: true,
-                sameSite: 'lax',
-                secure: req.secure,
-                maxAge: SESSAO_MS
-            });
-            res.json({ sucesso: true, usuario: publico(usuario) });
-        }
-    );
+async function criarSessao(req, res, usuario) {
+    try {
+        const token = crypto.randomBytes(32).toString('hex');
+        const expira = new Date(Date.now() + SESSAO_MS).toISOString();
+        await q('INSERT INTO sessoes (token, usuario_id, expira_em) VALUES ($1, $2, $3)', [token, usuario.id, expira]);
+        res.cookie(COOKIE, token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: req.secure,
+            maxAge: SESSAO_MS
+        });
+        res.json({ sucesso: true, usuario: publico(usuario) });
+    } catch (e) {
+        console.error('Erro interno:', e.message);
+        res.status(500).json({ sucesso: false, erro: 'Falha ao criar sessão' });
+    }
 }
 
 // Nunca devolve a senha para o cliente
@@ -66,18 +65,21 @@ function publico(u) {
     };
 }
 
-function usuarioAtual(req) {
-    return new Promise((resolve) => {
-        const token = lerCookies(req)[COOKIE];
-        if (!token) return resolve(null);
-        db.get(
+async function usuarioAtual(req) {
+    const token = lerCookies(req)[COOKIE];
+    if (!token) return null;
+    try {
+        const row = await qGet(
             `SELECT u.* FROM sessoes s
              JOIN usuarios u ON u.id = s.usuario_id
-             WHERE s.token = ? AND s.expira_em > datetime('now')`,
-            [token],
-            (err, row) => resolve(err ? null : row || null)
+             WHERE s.token = $1 AND s.expira_em > ${AGORA_SQL}`,
+            [token]
         );
-    });
+        return row || null;
+    } catch (e) {
+        console.error('Erro interno:', e.message);
+        return null;
+    }
 }
 
 // Middleware: escrita (POST/PUT/DELETE) exige sessão válida (401 senão)
@@ -98,7 +100,7 @@ router.get('/config', (req, res) => {
     });
 });
 
-router.post('/cadastro', (req, res) => {
+router.post('/cadastro', async (req, res) => {
     const { nome, email, senha, telefone, tipo } = req.body || {};
     const emailNorm = String(email || '').trim().toLowerCase();
 
@@ -110,61 +112,61 @@ router.post('/cadastro', (req, res) => {
 
     const tipoFinal = tipo === 'empresa' ? 'empresa' : 'cliente';
 
-    db.get('SELECT id FROM usuarios WHERE email = ?', [emailNorm], (err, existe) => {
-        if (err) return res.status(500).json({ sucesso: false, erro: 'Erro interno' });
+    try {
+        const existe = await qGet('SELECT id FROM usuarios WHERE email = $1', [emailNorm]);
         if (existe) return res.status(409).json({ sucesso: false, erro: 'Já existe uma conta com este e-mail.' });
 
-        bcrypt.hash(senha, 10, (errH, hash) => {
-            if (errH) return res.status(500).json({ sucesso: false, erro: 'Erro interno' });
-            db.run(
-                'INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo) VALUES (?, ?, ?, ?, ?)',
-                [nome.trim(), emailNorm, hash, telefone || null, tipoFinal],
-                function (errI) {
-                    if (errI) return res.status(500).json({ sucesso: false, erro: 'Erro ao criar conta' });
-                    db.get('SELECT * FROM usuarios WHERE id = ?', [this.lastID], (errG, u) => {
-                        if (errG) return res.status(500).json({ sucesso: false, erro: 'Erro interno' });
-                        criarSessao(req, res, u);
-                    });
-                }
-            );
-        });
-    });
+        const hash = await bcrypt.hash(senha, 10);
+        // e-mail já é UNIQUE no banco: corrida aqui vira 409
+        const novo = await q(
+            'INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [nome.trim(), emailNorm, hash, telefone || null, tipoFinal]
+        );
+        criarSessao(req, res, novo.rows[0]);
+    } catch (e) {
+        if (e.code === '23505') return res.status(409).json({ sucesso: false, erro: 'Já existe uma conta com este e-mail.' });
+        console.error('Erro interno:', e.message);
+        res.status(500).json({ sucesso: false, erro: 'Erro ao criar conta' });
+    }
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
     const { email, senha } = req.body || {};
     const identificador = String(email || '').trim().toLowerCase();
 
-    // Cliente entra com e-mail; prestador também aceita o nome do negócio
-    db.get(
-        `SELECT * FROM usuarios
-         WHERE provider = 'local' AND tipo = 'empresa'
-           AND (email = ? OR lower(nome) = ?)
-         UNION
-         SELECT * FROM usuarios
-         WHERE provider = 'local' AND tipo = 'cliente' AND email = ?
-         LIMIT 1`,
-        [identificador, identificador, identificador],
-        (err, u) => {
-            if (err) return res.status(500).json({ sucesso: false, erro: 'Erro interno' });
-            if (!u || !u.senha_hash) return res.status(401).json({ sucesso: false, erro: 'E-mail ou senha incorretos.' });
+    try {
+        // Cliente entra com e-mail; prestador também aceita o nome do negócio
+        const u = await qGet(
+            `SELECT * FROM usuarios
+             WHERE provider = 'local' AND tipo = 'empresa'
+               AND (email = $1 OR lower(nome) = $2)
+             UNION
+             SELECT * FROM usuarios
+             WHERE provider = 'local' AND tipo = 'cliente' AND email = $3
+             LIMIT 1`,
+            [identificador, identificador, identificador]
+        );
+        if (!u || !u.senha_hash) return res.status(401).json({ sucesso: false, erro: 'E-mail ou senha incorretos.' });
 
-            bcrypt.compare(String(senha || ''), u.senha_hash, (errC, ok) => {
-                if (errC || !ok) return res.status(401).json({ sucesso: false, erro: 'E-mail ou senha incorretos.' });
-                criarSessao(req, res, u);
-            });
-        }
-    );
+        const ok = await bcrypt.compare(String(senha || ''), u.senha_hash);
+        if (!ok) return res.status(401).json({ sucesso: false, erro: 'E-mail ou senha incorretos.' });
+        criarSessao(req, res, u);
+    } catch (e) {
+        console.error('Erro interno:', e.message);
+        res.status(500).json({ sucesso: false, erro: 'Erro interno' });
+    }
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
     const token = lerCookies(req)[COOKIE];
     const limpar = () => {
         res.clearCookie(COOKIE, { httpOnly: true, sameSite: 'lax', secure: req.secure });
         res.json({ sucesso: true });
     };
-    if (token) db.run('DELETE FROM sessoes WHERE token = ?', [token], () => limpar());
-    else limpar();
+    if (token) {
+        try { await q('DELETE FROM sessoes WHERE token = $1', [token]); } catch (e) { console.error('Erro interno:', e.message); }
+    }
+    limpar();
 });
 
 router.get('/eu', async (req, res) => {
@@ -178,8 +180,9 @@ router.get('/eu', async (req, res) => {
 router.post('/oauth', async (req, res) => {
     const { provider, credential, nonce } = req.body || {};
 
+    // 1) Valida a credencial no provedor (erros aqui = 401)
+    let dados;
     try {
-        let dados;
         if (provider === 'google') dados = await verificarGoogle(credential);
         else if (provider === 'microsoft') dados = await verificarMicrosoft(credential, nonce);
         else return res.status(400).json({ sucesso: false, erro: 'Provedor inválido.' });
@@ -187,48 +190,39 @@ router.post('/oauth', async (req, res) => {
         if (nonce && dados.nonce && nonce !== dados.nonce) {
             return res.status(401).json({ sucesso: false, erro: 'Nonce inválido.' });
         }
-
-        // Procura por provider+id, depois por e-mail (vincula conta existente)
-        db.get('SELECT * FROM usuarios WHERE provider = ? AND provider_id = ?', [provider, dados.id], (err, u) => {
-            if (err) return res.status(500).json({ sucesso: false, erro: 'Erro interno' });
-            if (u) return criarSessao(req, res, u);
-
-            db.get('SELECT * FROM usuarios WHERE email = ?', [dados.email], (err2, existente) => {
-                if (err2) return res.status(500).json({ sucesso: false, erro: 'Erro interno' });
-
-                if (existente && !dados.emailVerificado) {
-                    return res.status(403).json({ sucesso: false, erro: 'E-mail já cadastrado. Entre com sua senha para vincular.' });
-                }
-
-                if (existente) {
-                    // Vincula a conta existente ao provedor
-                    db.run(
-                        'UPDATE usuarios SET provider = ?, provider_id = ?, foto = COALESCE(?, foto) WHERE id = ?',
-                        [provider, dados.id, dados.foto || null, existente.id],
-                        (err3) => {
-                            if (err3) return res.status(500).json({ sucesso: false, erro: 'Erro interno' });
-                            criarSessao(req, res, { ...existente, provider, provider_id: dados.id, foto: dados.foto || existente.foto });
-                        }
-                    );
-                    return;
-                }
-
-                // Cria conta nova sem senha
-                db.run(
-                    'INSERT INTO usuarios (nome, email, provider, provider_id, foto) VALUES (?, ?, ?, ?, ?)',
-                    [dados.nome, dados.email, provider, dados.id, dados.foto || null],
-                    function (err4) {
-                        if (err4) return res.status(500).json({ sucesso: false, erro: 'Erro ao criar conta' });
-                        db.get('SELECT * FROM usuarios WHERE id = ?', [this.lastID], (err5, novo) => {
-                            if (err5) return res.status(500).json({ sucesso: false, erro: 'Erro interno' });
-                            criarSessao(req, res, novo);
-                        });
-                    }
-                );
-            });
-        });
     } catch (e) {
-        res.status(401).json({ sucesso: false, erro: e.message || 'Falha ao validar o login social.' });
+        return res.status(401).json({ sucesso: false, erro: e.message || 'Falha ao validar o login social.' });
+    }
+
+    // 2) Procura por provider+id, depois por e-mail (vincula conta existente)
+    try {
+        const porProvider = await qGet('SELECT * FROM usuarios WHERE provider = $1 AND provider_id = $2', [provider, dados.id]);
+        if (porProvider) return criarSessao(req, res, porProvider);
+
+        const existente = await qGet('SELECT * FROM usuarios WHERE email = $1', [dados.email]);
+        if (existente && !dados.emailVerificado) {
+            return res.status(403).json({ sucesso: false, erro: 'E-mail já cadastrado. Entre com sua senha para vincular.' });
+        }
+
+        if (existente) {
+            // Vincula a conta existente ao provedor
+            await q(
+                'UPDATE usuarios SET provider = $1, provider_id = $2, foto = COALESCE($3, foto) WHERE id = $4',
+                [provider, dados.id, dados.foto || null, existente.id]
+            );
+            return criarSessao(req, res, { ...existente, provider, provider_id: dados.id, foto: dados.foto || existente.foto });
+        }
+
+        // Cria conta nova sem senha
+        const novo = await q(
+            'INSERT INTO usuarios (nome, email, provider, provider_id, foto) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [dados.nome, dados.email, provider, dados.id, dados.foto || null]
+        );
+        criarSessao(req, res, novo.rows[0]);
+    } catch (e) {
+        if (e.code === '23505') return res.status(409).json({ sucesso: false, erro: 'Já existe uma conta com este e-mail.' });
+        console.error('Erro interno:', e.message);
+        res.status(500).json({ sucesso: false, erro: 'Erro interno' });
     }
 });
 

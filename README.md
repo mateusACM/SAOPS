@@ -6,7 +6,8 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com/)
-[![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
 [![Deploy](https://img.shields.io/badge/Render-live-46E3B7?logo=render&logoColor=white)](https://saops.onrender.com/)
 [![Licença](https://img.shields.io/badge/Licen%C3%A7a-MIT-green)](LICENSE)
 [![PRs](https://img.shields.io/badge/PRs-bem--vindos-brightgreen)](https://github.com/nicolaskmazzini-coder/SAOPS/pulls)
@@ -69,7 +70,7 @@
 
 ## 🛠️ Tecnologias
 
-- **Backend:** Node.js 24 + Express 5 + SQLite (`sqlite3`) + `bcryptjs` + `express-rate-limit` + `dotenv`
+- **Backend:** Node.js 24 + Express 5 + PostgreSQL (`pg`, Supabase) + `bcryptjs` + `express-rate-limit` + `dotenv`
 - **Frontend:** HTML + CSS + JavaScript puros (sem frameworks), Google Identity Services + MSAL (popup) pro login social
 - **Infra:** [Render](https://render.com/) (plano gratuito, região Frankfurt) com deploy automático a cada push na `main`
 
@@ -82,7 +83,7 @@ SAOPS/
 ├── Backend/
 │   ├── server.js      # API REST + rotas amigáveis + 404 real
 │   ├── auth.js        # Cadastro/login/sessão (cookie HttpOnly) + OAuth
-│   ├── database.js    # SQLite: agendamentos, tarefas, usuarios, sessoes, servicos
+│   ├── database.js    # PostgreSQL (Supabase): agendamentos, tarefas, usuarios, sessoes, servicos
 │   └── package.json
 ├── Frontend/
 │   ├── Paginas/       # 18 páginas + robots.txt, sitemap.xml, llms.txt, manifest
@@ -139,17 +140,17 @@ npm install --prefix Backend
 PORT=3000 node Backend/server.js
 ```
 
-Acesse **http://localhost:3000**. O banco `Backend/agendamento.db` é criado sozinho na primeira execução.
+Acesse **http://localhost:3000**. Crie um `.env` em `Backend/` com `DATABASE_URL` (PostgreSQL/Supabase) — as tabelas e índices são criados sozinhos na primeira execução.
 
-Login social local (opcional): crie um `.env` em `Backend/` com `GOOGLE_CLIENT_ID` e/ou `MICROSOFT_CLIENT_ID` e cadastre `http://localhost:3000` como origem/redirect nos consoles do Google/Azure.
+Login social local (opcional): acrescente no mesmo `.env` `GOOGLE_CLIENT_ID` e/ou `MICROSOFT_CLIENT_ID` e cadastre `http://localhost:3000` como origem/redirect nos consoles do Google/Azure.
 
 ---
 
 ## ☁️ Deploy
 
-O `render.yaml` na raiz configura o Blueprint: a cada push na `main`, o Render reinstala e reinicia sozinho (~1 min). Variáveis de ambiente no dashboard: `NODE_ENV=production`, `GOOGLE_CLIENT_ID`, `MICROSOFT_CLIENT_ID`.
+O `render.yaml` na raiz configura o Blueprint: a cada push na `main`, o Render reinstala e reinicia sozinho (~1 min). Variáveis de ambiente no dashboard: `DATABASE_URL` (obrigatória), `NODE_ENV=production`, `GOOGLE_CLIENT_ID`, `MICROSOFT_CLIENT_ID`.
 
-> ⚠️ Plano gratuito: o serviço dorme sem tráfego (~50s pra acordar) e o SQLite zera a cada deploy — adequado pra demo/TCC.
+> ⚠️ Plano gratuito: o serviço dorme sem tráfego (~50s pra acordar). Os dados vivem no Supabase (PostgreSQL) e **não zeram mais** a cada deploy.
 
 ---
 

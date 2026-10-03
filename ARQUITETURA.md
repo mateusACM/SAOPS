@@ -2,7 +2,7 @@
 
 ## 📌 Visão Geral
 
-O **SAOPS** é uma aplicação web de agendamento (TCC) com **API REST** em Node.js + SQLite e frontend estático servido pelo próprio backend. Escrita exige **login** (sessão em cookie HttpOnly); leituras são públicas.
+O **SAOPS** é uma aplicação web de agendamento (TCC) com **API REST** em Node.js + PostgreSQL (Supabase) e frontend estático servido pelo próprio backend. Escrita exige **login** (sessão em cookie HttpOnly); leituras são públicas.
 
 ### Stack Tecnológico
 
@@ -11,10 +11,10 @@ Navegador (18 páginas HTML + 7 scripts JS)
     ↓ HTTP (mesma origem)
 Express 5 — rotas amigáveis + API REST + /api/auth
     ↓
-SQLite (agendamento.db) — 5 tabelas
+PostgreSQL 17 (Supabase) — 5 tabelas
 ```
 
-**Dependências:** `express`, `sqlite3`, `bcryptjs`, `express-rate-limit`, `body-parser`, `cors`, `dotenv`. **Runtime:** Node.js 18+ (produção: 24 no Render).
+**Dependências:** `express`, `pg`, `bcryptjs`, `express-rate-limit`, `body-parser`, `cors`, `dotenv`. **Runtime:** Node.js 18+ (produção: 24 no Render).
 
 ---
 
@@ -29,10 +29,10 @@ SQLite (agendamento.db) — 5 tabelas
 ### 2. Backend (`Backend/`)
 - **`server.js`** — Express: CRUD `/agendamentos`, `/tarefas`, `/servicos`, rotas amigáveis, 404 real (`erro.html` com status 404), rate-limit no `/api/auth`
 - **`auth.js`** — cadastro/login/logout/`eu`/config/OAuth (Google via `tokeninfo`, Microsoft via JWKS RS256), sessão de 7 dias em cookie `saops_token` (`HttpOnly`, `SameSite=Lax`)
-- **`database.js`** — conexão, 5 tabelas, `PRAGMA foreign_keys`, índices e limpeza horária de sessões
+- **`database.js`** — pool do PostgreSQL, helpers async (`q`/`qGet`/`qAll`), 5 tabelas com FKs nativas, índices e limpeza horária de sessões
 - **Porta:** `PORT` (produção) ou 3000 local — `PORT=3000 node Backend/server.js`
 
-### 3. Banco de Dados (`agendamento.db`, SQLite)
+### 3. Banco de Dados (PostgreSQL — Supabase)
 | Tabela | Dono | Descrição |
 |---|---|---|
 | `agendamentos` | — (global) | Nome, serviço, data, horário, telefone, status + `UNIQUE(data, horario)` |
@@ -74,7 +74,7 @@ Sem sessão nas rotas 🔒 → `401 { erro: 'Login necessário.' }`.
 ```
 Página chama exigirLogin() → sem sessão: guarda saops_voltar e vai pro login
     ↓ (logado: cookie saops_token vai junto, mesma origem)
-Middleware exigirLogin valida sessão no SQLite
+Middleware exigirLogin valida sessão no PostgreSQL
     ↓
 Validações → conflito? → INSERT → 201 + id (ou 400/401/409)
     ↓
