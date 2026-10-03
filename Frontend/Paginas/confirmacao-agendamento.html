@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Confirmação do seu agendamento no SAOPS.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/confirmacao-agendamento">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Agendamento confirmado">
+  <meta property="og:description" content="Confirmação do seu agendamento no SAOPS.">
+  <meta property="og:url" content="https://saops.onrender.com/confirmacao-agendamento">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Agendamento confirmado">
+  <meta name="twitter:description" content="Confirmação do seu agendamento no SAOPS.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Agendamento confirmado</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <h1>Agendamento confirmado</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <section id="resumo" class="conf-card">
+      <div class="conf-ico">✓</div>
+      <div class="sk-card" style="border:none;box-shadow:none;text-align:left"><div class="sk-linha larga"></div><div class="sk-linha media"></div><div class="sk-linha curta"></div></div>
+    </section>
+
+    <section class="conf-card" style="padding-top:16px">
+      <p>Você pode ver, reagendar ou cancelar esse horário a qualquer momento na aba "Meu perfil".</p>
+      <div class="conf-acoes">
+        <a href="perfil.html">
+          <button type="button" id="btn_ver_agendamentos">Ver meus agendamentos</button>
+        </a>
+        <a href="busca.html">
+          <button type="button" id="btn_agendar_outro" class="secundario">Agendar outro horário</button>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script>
+  (async () => {
+    const resumo = document.getElementById('resumo');
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id') || sessionStorage.getItem('ultimo_agendamento_id');
+
+    if (!id || typeof buscarAgendamentoPorId !== 'function') {
+      resumo.innerHTML = '<div class="conf-ico">✓</div><h1>Agendamento confirmado!</h1><p>Nenhum detalhe para exibir.</p>';
+      return;
+    }
+    const resultado = await buscarAgendamentoPorId(id);
+    if (!resultado.sucesso) {
+      resumo.innerHTML = '<div class="conf-ico">✓</div><h1>Agendamento confirmado!</h1>' +
+        '<p>Não foi possível carregar os detalhes: ' + esc(resultado.erro) + '</p>';
+      return;
+    }
+    const a = resultado.dados;
+    resumo.innerHTML =
+      '<div class="conf-ico">✓</div>' +
+      '<h1>Agendamento confirmado!</h1>' +
+      '<p style="font-size:1.15rem;color:var(--ink);font-weight:500;margin:4px 0">' + esc(a.servico) + '</p>' +
+      '<p>' + esc(a.nome_cliente) + ' — ' + esc(a.data.split('-').reverse().join('/')) + ' às ' + esc(a.horario) + '</p>' +
+      (a.telefone ? '<p>' + esc(a.telefone) + '</p>' : '') +
+      '<p><span class="badge ' + esc(a.status) + '">' + esc(a.status) + '</span> · #' + esc(a.id) + '</p>';
+    toast('Agendamento criado com sucesso!', 'sucesso');
+  })();
+</script>
+
+<script src="../js/tema.js"></script>
+</body>
+</html>

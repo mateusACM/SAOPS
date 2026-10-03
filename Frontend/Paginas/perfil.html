@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Edite seu perfil, foto e preferências de notificação do SAOPS.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/perfil">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Meu perfil">
+  <meta property="og:description" content="Edite seu perfil, foto e preferências de notificação do SAOPS.">
+  <meta property="og:url" content="https://saops.onrender.com/perfil">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Meu perfil">
+  <meta name="twitter:description" content="Edite seu perfil, foto e preferências de notificação do SAOPS.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Meu perfil</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <h1>Meu perfil</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <section>
+      <div class="perfil-topo">
+        <div class="avatar-perfil" id="avatar_grande">P</div>
+        <div>
+          <h2 id="perfil_nome">Meu perfil</h2>
+          <p id="perfil_email">—</p>
+          <div class="foto-acoes">
+            <label for="txt_foto" style="margin:0">
+              <span class="mini" style="display:inline-block;background:var(--brand);color:#fff;border-radius:20px;padding:7px 18px;font-weight:500;cursor:pointer">Trocar foto</span>
+            </label>
+            <input type="file" id="txt_foto" accept="image/*" hidden>
+            <button type="button" id="btn_remover_foto" class="secundario mini">Remover foto</button>
+          </div>
+          <p id="foto_aviso" style="font-size:.82rem;margin-top:6px">A foto fica salva neste navegador (máx. ~160px).</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Dados</h2>
+      <form id="form_perfil" action="#" method="post">
+        <label for="txt_nome_perfil">Nome</label>
+        <input type="text" id="txt_nome_perfil" name="nome" placeholder="Seu nome">
+
+        <label for="txt_email_perfil">E-mail</label>
+        <input type="email" id="txt_email_perfil" name="email" placeholder="voce@email.com">
+
+        <button type="submit" id="btn_salvar_perfil">Salvar alterações</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Próximos agendamentos</h2>
+      <p id="status_perfil">Carregando...</p>
+      <ul id="lista_perfil"></ul>
+    </section>
+
+    <section>
+      <h2>Notificações</h2>
+      <label class="linha-toggle" for="toggle_lembretes">
+        <input type="checkbox" id="toggle_lembretes">
+        Lembretes de agendamento (avise quando faltar pouco pro horário)
+      </label>
+      <label for="lembrete_antecedencia">Avisar com antecedência de</label>
+      <select id="lembrete_antecedencia">
+        <option value="15">15 minutos</option>
+        <option value="30">30 minutos</option>
+        <option value="60">1 hora</option>
+      </select>
+      <p id="lembrete_status" class="t-meta">—</p>
+    </section>
+
+    <button type="button" id="btn_sair_conta" class="perigo">Sair da conta</button>
+
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script>
+  // ---------- Avatar / foto ----------
+  const avatarGrande = document.getElementById('avatar_grande');
+  const nomeInput = document.getElementById('txt_nome_perfil');
+  const emailInput = document.getElementById('txt_email_perfil');
+
+  function iniciais(nome) {
+    const partes = (nome || '').trim().split(/\s+/).filter(Boolean);
+    if (!partes.length) return 'P';
+    return partes.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+  }
+
+  function pintarAvatar() {
+    const foto = localStorage.getItem('saops_foto') || '';
+    const nome = nomeInput.value || localStorage.getItem('nome_cliente') || '';
+    if (foto) {
+      avatarGrande.style.backgroundImage = 'url(' + foto + ')';
+      avatarGrande.textContent = '';
+    } else {
+      avatarGrande.style.backgroundImage = '';
+      avatarGrande.textContent = iniciais(nome);
+    }
+    document.getElementById('perfil_nome').textContent = nome || 'Meu perfil';
+    document.getElementById('perfil_email').textContent = emailInput.value || '—';
+  }
+
+  // Carrega dados salvos
+  nomeInput.value = localStorage.getItem('nome_cliente') || '';
+  emailInput.value = localStorage.getItem('email_cliente') || '';
+  pintarAvatar();
+
+  // Redimensiona e salva a foto escolhida
+  document.getElementById('txt_foto').addEventListener('change', (e) => {
+    const arquivo = e.target.files && e.target.files[0];
+    if (!arquivo) return;
+    if (!arquivo.type.startsWith('image/')) {
+      toast('Escolha um arquivo de imagem.', 'erro');
+      return;
+    }
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 160;
+        let { width, height } = img;
+        const escala = Math.min(1, MAX / Math.max(width, height));
+        width = Math.round(width * escala);
+        height = Math.round(height * escala);
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const base64 = canvas.toDataURL('image/jpeg', 0.82);
+        try {
+          localStorage.setItem('saops_foto', base64);
+          pintarAvatar();
+          document.querySelectorAll('[data-avatar]').forEach((el) => {
+            el.style.backgroundImage = 'url(' + base64 + ')';
+            el.textContent = '';
+          });
+          toast('Foto atualizada!', 'sucesso');
+        } catch (err) {
+          toast('Foto grande demais para salvar no navegador.', 'erro');
+        }
+      };
+      img.src = leitor.result;
+    };
+    leitor.readAsDataURL(arquivo);
+    e.target.value = '';
+  });
+
+  document.getElementById('btn_remover_foto').onclick = () => {
+    localStorage.removeItem('saops_foto');
+    pintarAvatar();
+    document.querySelectorAll('[data-avatar]').forEach((el) => {
+      el.style.backgroundImage = '';
+      el.textContent = iniciais(nomeInput.value || localStorage.getItem('nome_cliente'));
+    });
+    toast('Foto removida.', 'info');
+  };
+
+  // ---------- Dados ----------
+  document.getElementById('form_perfil').addEventListener('submit', (e) => {
+    e.preventDefault();
+    localStorage.setItem('nome_cliente', nomeInput.value.trim());
+    localStorage.setItem('email_cliente', emailInput.value.trim());
+    pintarAvatar();
+    document.querySelectorAll('[data-avatar]').forEach((el) => {
+      el.textContent = iniciais(nomeInput.value);
+      const foto = localStorage.getItem('saops_foto');
+      if (foto) { el.style.backgroundImage = 'url(' + foto + ')'; el.textContent = ''; }
+    });
+    toast('Perfil salvo neste navegador.', 'sucesso');
+    carregar();
+  });
+
+  document.getElementById('btn_sair_conta').onclick = async () => {
+    await sairConta();
+    localStorage.removeItem('saops_usuario');
+    localStorage.removeItem('nome_cliente');
+    localStorage.removeItem('email_cliente');
+    localStorage.removeItem('telefone');
+    toast('Sessão encerrada.', 'info');
+    pintarAvatar();
+    setTimeout(() => { window.location.href = 'index.html'; }, 600);
+  };
+
+  // Se não houver dados locais, completa pela sessão do servidor
+  usuarioAtual().then((r) => {
+    if (!r.sucesso || !r.usuario) return;
+    if (nomeInput.value && emailInput.value) return;
+    nomeInput.value = nomeInput.value || r.usuario.nome || '';
+    emailInput.value = emailInput.value || r.usuario.email || '';
+    pintarAvatar();
+    carregar();
+  });
+
+  // ---------- Agendamentos ----------
+  async function carregar() {
+    const status = document.getElementById('status_perfil');
+    const lista = document.getElementById('lista_perfil');
+    status.textContent = '';
+    lista.innerHTML = esqueleto(2);
+    const nome = (localStorage.getItem('nome_cliente') || '').toLowerCase();
+    const r = await listarAgendamentos();
+    if (!r.sucesso) {
+      lista.innerHTML = '<div class="vazio">Erro: ' + esc(r.erro) + ' — o backend está rodando?</div>';
+      status.textContent = '';
+      return;
+    }
+    const meus = nome ? r.dados.filter((a) => String(a.nome_cliente || '').toLowerCase() === nome) : r.dados;
+    if (!meus.length) {
+      status.textContent = '';
+      lista.innerHTML = '<div class="vazio"><span class="vazio-ico">📅</span>' +
+        (nome ? 'Nenhum agendamento seu por aqui. Que tal marcar um?' : 'Salve seu nome acima para filtrar seus agendamentos.') +
+        '</div>';
+      return;
+    }
+    status.textContent = '';
+    lista.innerHTML = '';
+    meus.forEach((a) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<div><p>' + esc(a.servico) + '</p>' +
+        '<p class="t-meta">' + a.data.split('-').reverse().join('/') + ' às ' + a.horario + '</p></div>' +
+        '<span class="badge ' + esc(a.status) + '">' + esc(a.status) + '</span>';
+      const link = document.createElement('a');
+      link.href = 'cancelar-reagendar.html?id=' + a.id;
+      link.innerHTML = '<button type="button" class="secundario mini">Cancelar ou reagendar</button>';
+      li.appendChild(link);
+      lista.appendChild(li);
+    });
+  }
+  carregar();
+
+  // ---------- Lembretes (notificações) ----------
+  const toggleLembrete = document.getElementById('toggle_lembretes');
+  const selAntecedencia = document.getElementById('lembrete_antecedencia');
+  const avisoLembrete = document.getElementById('lembrete_status');
+
+  function pintarLembrete() {
+    if (typeof Notification === 'undefined') {
+      toggleLembrete.checked = false;
+      toggleLembrete.disabled = true;
+      avisoLembrete.textContent = 'Este navegador não suporta notificações.';
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      toggleLembrete.checked = false;
+      avisoLembrete.textContent = 'Permissão negada pelo navegador. Libere nas configurações do site.';
+      return;
+    }
+    const ativo = localStorage.getItem('saops_lembretes') === 'on';
+    toggleLembrete.checked = ativo;
+    avisoLembrete.textContent = ativo
+      ? 'Ativo — aviso no site e pelo navegador quando faltar pouco pro horário.'
+      : 'Ative para ser avisado quando faltar pouco pro horário.';
+  }
+
+  toggleLembrete.onchange = async () => {
+    if (toggleLembrete.checked) {
+      let permissao = 'granted';
+      try { permissao = await Notification.requestPermission(); } catch (e) { permissao = 'denied'; }
+      if (permissao !== 'granted') {
+        localStorage.setItem('saops_lembretes', 'off');
+        pintarLembrete();
+        toast('Permissão de notificação não concedida.', 'erro');
+        return;
+      }
+      localStorage.setItem('saops_lembretes', 'on');
+      toast('Lembretes ativados!', 'sucesso');
+    } else {
+      localStorage.setItem('saops_lembretes', 'off');
+      toast('Lembretes desativados.', 'info');
+    }
+    pintarLembrete();
+  };
+
+  selAntecedencia.value = localStorage.getItem('saops_lembrete_antecedencia') || '60';
+  selAntecedencia.onchange = () => {
+    localStorage.setItem('saops_lembrete_antecedencia', selAntecedencia.value);
+    toast('Avisar com ' + selAntecedencia.selectedOptions[0].textContent + ' de antecedência.', 'sucesso');
+  };
+
+  pintarLembrete();
+</script>
+
+<script src="../js/tema.js"></script>
+</body>
+</html>

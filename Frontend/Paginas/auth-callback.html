@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Autenticação social do SAOPS.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="noindex, nofollow">
+  <title>SAOPS - Concluindo login...</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <img class="logo-hero" src="../img/logo.png" alt="SAOPS">
+      <h1>Concluindo login...</h1>
+      <p id="msg_callback">Aguarde um instante. Se esta janela não fechar sozinha, pode fechá-la.</p>
+    </section>
+  </main>
+
+<script>
+  // Retorno do fluxo Microsoft (id_token no fragmento da URL).
+  // Devolve o token para a janela que abriu este popup e se fecha.
+  (function () {
+    const params = new URLSearchParams(location.hash.slice(1));
+    const destinoOpener = window.opener;
+
+    const responder = (dados) => {
+      if (destinoOpener && !destinoOpener.closed) {
+        destinoOpener.postMessage(dados, location.origin);
+        setTimeout(() => window.close(), 150);
+      } else {
+        document.getElementById('msg_callback').textContent =
+          'Esta janela foi aberta diretamente. Feche-a e tente o login de novo pela página.';
+      }
+    };
+
+    if (params.get('error')) {
+      responder({
+        tipo: 'ms_erro',
+        erro: params.get('error_description') || 'Login com Microsoft cancelado.'
+      });
+      return;
+    }
+    const token = params.get('id_token');
+    if (token) responder({ tipo: 'ms_id_token', token });
+    else responder({ tipo: 'ms_erro', erro: 'Microsoft não devolveu o token.' });
+  })();
+</script>
+<script src="../js/tema.js"></script>
+</body>
+</html>

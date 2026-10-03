@@ -1,0 +1,24 @@
+{
+  "name": "SAOPS - Sistema de Agendamento",
+  "short_name": "SAOPS",
+  "description": "Agende horários em barbearias, salões e clínicas perto de você. Calendário, tarefas e lembretes gratuitos.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#03071f",
+  "theme_color": "#03071f",
+  "icons": [
+    {
+      "src": "/img/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

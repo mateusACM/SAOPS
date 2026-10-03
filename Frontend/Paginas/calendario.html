@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Veja todos os seus agendamentos e tarefas no calendário do SAOPS, dia a dia.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/calendario">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Calendário">
+  <meta property="og:description" content="Veja todos os seus agendamentos e tarefas no calendário do SAOPS, dia a dia.">
+  <meta property="og:url" content="https://saops.onrender.com/calendario">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Calendário">
+  <meta name="twitter:description" content="Veja todos os seus agendamentos e tarefas no calendário do SAOPS, dia a dia.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Calendário</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <h1>Calendário</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <div class="cal-bar">
+        <button type="button" id="btn_mes_anterior" class="secundario">&larr;</button>
+        <button type="button" id="btn_hoje" class="secundario">Hoje</button>
+        <button type="button" id="btn_mes_proximo" class="secundario">&rarr;</button>
+        <h2 id="titulo_mes">...</h2>
+      </div>
+      <p id="status_cal">Carregando agendamentos...</p>
+      <div class="cal-grid" id="grade"></div>
+    </section>
+
+    <section>
+      <h2 id="titulo_dia">Escolha um dia</h2>
+      <div class="chips-status" id="chips_status_dia" role="group" aria-label="Filtrar agendamentos por status"></div>
+      <p id="status_dia">Clique em um dia do calendário para ver os agendamentos.</p>
+      <ul id="lista_dia"></ul>
+      <div class="conf-acoes" style="justify-content:flex-start">
+        <a id="link_agendar_dia" href="agendamento.html">
+          <button type="button" id="btn_agendar_dia">Novo agendamento</button>
+        </a>
+        <a id="link_tarefa_dia" href="tarefas.html">
+          <button type="button" id="btn_tarefa_dia" class="secundario">Nova tarefa</button>
+        </a>
+      </div>
+    </section>
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script>
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const grade = document.getElementById('grade');
+  const statusCal = document.getElementById('status_cal');
+  const tituloMes = document.getElementById('titulo_mes');
+  const tituloDia = document.getElementById('titulo_dia');
+  const statusDia = document.getElementById('status_dia');
+  const listaDia = document.getElementById('lista_dia');
+
+  const hoje = new Date();
+  let anoVisivel = hoje.getFullYear();
+  let mesVisivel = hoje.getMonth();
+  let porData = {}; // 'YYYY-MM-DD' -> [agendamentos]
+  let tarefasPorData = {}; // 'YYYY-MM-DD' -> [tarefas]
+  let diaSelecionado = null;
+
+  const statusAtivosDia = new Set(STATUS_AGENDAMENTO);
+  montarChipsStatus(document.getElementById('chips_status_dia'), statusAtivosDia, () => {
+    if (diaSelecionado) mostrarDia(diaSelecionado);
+  });
+
+  const isoLocal = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+  function desenhar() {
+    tituloMes.textContent = MESES[mesVisivel][0].toUpperCase() + MESES[mesVisivel].slice(1) + ' de ' + anoVisivel;
+    grade.innerHTML = '';
+    ['S','T','Q','Q','S','S','D'].forEach((d) => {
+      const el = document.createElement('div');
+      el.className = 'cal-dow';
+      el.textContent = d;
+      grade.appendChild(el);
+    });
+
+    const primeiro = new Date(anoVisivel, mesVisivel, 1);
+    const desloc = (primeiro.getDay() + 6) % 7; // semana começa na segunda
+    const diasNoMes = new Date(anoVisivel, mesVisivel + 1, 0).getDate();
+    const diasMesAnt = new Date(anoVisivel, mesVisivel, 0).getDate();
+    const hojeIso = isoLocal(hoje);
+
+    for (let i = 0; i < 42; i++) {
+      const diaNum = i - desloc + 1;
+      const cell = document.createElement('div');
+      let iso, fora = false;
+      if (diaNum < 1) { iso = isoLocal(new Date(anoVisivel, mesVisivel - 1, diasMesAnt + diaNum)); fora = true; }
+      else if (diaNum > diasNoMes) { iso = isoLocal(new Date(anoVisivel, mesVisivel + 1, diaNum - diasNoMes)); fora = true; }
+      else { iso = isoLocal(new Date(anoVisivel, mesVisivel, diaNum)); }
+
+      const diaSemana = new Date(iso + 'T12:00:00').getDay(); // 0 = domingo, 6 = sábado
+      const fimSemana = !fora && (diaSemana === 0 || diaSemana === 6);
+      cell.className = 'cal-cell' + (fora ? ' fora' : '') + (fimSemana ? ' fim-semana' : '') + (iso === hojeIso ? ' cal-hoje' : '') + (iso === diaSelecionado ? ' selecionado' : '');
+      const num = document.createElement('span');
+      num.className = 'cal-num';
+      num.textContent = Number(iso.slice(8, 10));
+      cell.appendChild(num);
+
+      const ags = porData[iso] || [];
+      const tfs = tarefasPorData[iso] || [];
+      const itens = [
+        ...ags.map((a, idx) => ({ txt: a.horario + ' ' + a.nome_cliente, cls: 'c' + (idx % 5), titulo: a.servico + ' (' + a.status + ')' })),
+        ...tfs.map((t) => ({ txt: (t.hora ? t.hora + ' ' : '') + t.titulo, cls: 'chip-tarefa' + (t.concluido ? ' feita' : ''), titulo: 'Tarefa: ' + t.titulo }))
+      ];
+
+      itens.slice(0, 3).forEach((it) => {
+        const chip = document.createElement('span');
+        chip.className = 'cal-chip ' + it.cls;
+        chip.textContent = it.txt;
+        chip.title = it.titulo;
+        cell.appendChild(chip);
+      });
+      if (itens.length > 3) {
+        const mais = document.createElement('span');
+        mais.className = 'cal-mais';
+        mais.textContent = '+' + (itens.length - 3) + ' mais';
+        cell.appendChild(mais);
+      }
+
+      if (!fora) {
+        cell.onclick = () => { diaSelecionado = iso; desenhar(); mostrarDia(iso); };
+      }
+      grade.appendChild(cell);
+    }
+  }
+
+  function mostrarDia(iso) {
+    tituloDia.textContent = 'Dia ' + iso.split('-').reverse().join('/');
+    document.getElementById('link_agendar_dia').href = 'agendamento.html?data=' + iso;
+    document.getElementById('link_tarefa_dia').href = 'tarefas.html?data=' + iso;
+    const todos = porData[iso] || [];
+    const itens = todos.filter((a) => statusAtivosDia.has(a.status));
+    const tfs = tarefasPorData[iso] || [];
+    listaDia.innerHTML = '';
+
+    if (!todos.length && !tfs.length) {
+      statusDia.textContent = 'Nada marcado neste dia. Todos os horários estão livres!';
+      return;
+    }
+    if (!itens.length && !tfs.length) {
+      statusDia.textContent = '0/' + todos.length + ' agendamento(s) - nada corresponde aos filtros atuais.';
+      return;
+    }
+    statusDia.textContent = itens.length + '/' + todos.length + ' agendamento(s) e ' +
+      tfs.length + ' tarefa(s).';
+
+    itens.forEach((a) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<span>' + esc(a.horario) + '</span><p>' + esc(a.nome_cliente) + ' - ' + esc(a.servico) + '</p>' +
+        '<span class="badge ' + esc(a.status) + '">' + esc(a.status) + '</span>';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mini perigo';
+      btn.textContent = 'Cancelar';
+      btn.onclick = async () => {
+        if (!confirm('Cancelar o agendamento #' + a.id + '?')) return;
+        if (!(await exigirLogin('login-cliente.html'))) return;
+        const r = await deletarAgendamento(a.id);
+        if (r.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
+        if (r.sucesso) { toast('Agendamento cancelado.', 'info'); carregar(); }
+        else toast('Erro: ' + r.erro, 'erro');
+      };
+      li.appendChild(btn);
+      listaDia.appendChild(li);
+    });
+
+    tfs.forEach((t) => {
+      const li = document.createElement('li');
+      li.className = 'tarefa-item' + (t.concluido ? ' feita' : '');
+      li.innerHTML = '<div><p class="t-titulo">' + esc(t.titulo) + '</p>' +
+        '<p class="t-meta">' + (t.hora ? esc(t.hora) + ' · ' : '') +
+        '<span class="cat-chip ' + esc(t.categoria) + '">' + esc(t.categoria) + '</span></p></div>';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mini secundario';
+      btn.textContent = t.concluido ? 'Reabrir' : 'Concluir';
+      btn.onclick = async () => {
+        const r = await atualizarTarefa(t.id, { concluido: t.concluido ? 0 : 1 });
+        if (r.sucesso) { toast(t.concluido ? 'Tarefa reaberta.' : 'Tarefa concluída! 🎉', 'sucesso'); carregar(); }
+        else toast('Erro: ' + r.erro, 'erro');
+      };
+      li.appendChild(btn);
+      listaDia.appendChild(li);
+    });
+  }
+
+  async function carregar() {
+    grade.innerHTML = esqueletoCard('sk-full');
+    const [r, rt] = await Promise.all([listarAgendamentos(), listarTarefas()]);
+    if (!r.sucesso) {
+      statusCal.textContent = 'Erro: ' + r.erro + ' (backend rodando?)';
+      grade.innerHTML = '';
+      return;
+    }
+    porData = {};
+    r.dados.forEach((a) => { (porData[a.data] = porData[a.data] || []).push(a); });
+    Object.values(porData).forEach((l) => l.sort((x, y) => x.horario.localeCompare(y.horario)));
+
+    tarefasPorData = {};
+    if (rt.sucesso) {
+      rt.dados.forEach((t) => { (tarefasPorData[t.data] = tarefasPorData[t.data] || []).push(t); });
+    }
+
+    statusCal.textContent = r.dados.length + ' agendamento(s) e ' +
+      (rt.sucesso ? rt.dados.length : 0) + ' tarefa(s) no total.';
+    desenhar();
+    if (diaSelecionado) mostrarDia(diaSelecionado);
+  }
+
+  document.getElementById('btn_mes_anterior').onclick = () => {
+    mesVisivel--; if (mesVisivel < 0) { mesVisivel = 11; anoVisivel--; } desenhar();
+  };
+  document.getElementById('btn_mes_proximo').onclick = () => {
+    mesVisivel++; if (mesVisivel > 11) { mesVisivel = 0; anoVisivel++; } desenhar();
+  };
+  document.getElementById('btn_hoje').onclick = () => {
+    anoVisivel = hoje.getFullYear(); mesVisivel = hoje.getMonth();
+    diaSelecionado = isoLocal(hoje); desenhar(); mostrarDia(diaSelecionado);
+  };
+
+  carregar();
+</script>
+<script src="../js/tema.js"></script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Gerencie a agenda do seu negócio com filtros por status, data e horário no SAOPS.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/agenda-prestador">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Agenda do prestador">
+  <meta property="og:description" content="Gerencie a agenda do seu negócio com filtros por status, data e horário no SAOPS.">
+  <meta property="og:url" content="https://saops.onrender.com/agenda-prestador">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Agenda do prestador">
+  <meta name="twitter:description" content="Gerencie a agenda do seu negócio com filtros por status, data e horário no SAOPS.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Agenda do prestador</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <h1>Sua agenda</h1>
+    <a href="gerenciar-servicos.html">Meus serviços</a>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <section>
+      <h2>Filtros</h2>
+      <div class="filtros-bar">
+        <input type="search" id="filtro_texto" placeholder="Buscar por cliente ou serviço..." aria-label="Buscar por cliente ou serviço">
+        <label for="filtro_data">Data <input type="date" id="filtro_data"></label>
+        <label for="filtro_de">De <input type="date" id="filtro_de"></label>
+        <label for="filtro_ate">Até <input type="date" id="filtro_ate"></label>
+        <select id="filtro_ordem" aria-label="Ordenar por">
+          <option value="data_asc">Data &#8593;</option>
+          <option value="data_desc">Data &#8595;</option>
+          <option value="horario_asc">Horário &#8593;</option>
+          <option value="horario_desc">Horário &#8595;</option>
+        </select>
+      </div>
+      <div class="chips-status" id="chips_status" role="group" aria-label="Filtrar por status"></div>
+      <div class="filtros-rodape">
+        <span id="contagem">—</span>
+        <button type="button" id="btn_filtrar">Buscar</button>
+        <button type="button" id="btn_ver_todos" class="secundario">Ver todos</button>
+        <button type="button" id="btn_limpar" class="secundario mini">Limpar filtros</button>
+      </div>
+    </section>
+
+    <section>
+      <h2 id="titulo_lista">Agendamentos</h2>
+      <p id="status_lista">Carregando...</p>
+      <ul id="lista_agendamentos"></ul>
+    </section>
+
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script>
+  const campoData = document.getElementById('filtro_data');
+  const campoTexto = document.getElementById('filtro_texto');
+  const campoDe = document.getElementById('filtro_de');
+  const campoAte = document.getElementById('filtro_ate');
+  const campoOrdem = document.getElementById('filtro_ordem');
+  const contagem = document.getElementById('contagem');
+  const statusLista = document.getElementById('status_lista');
+  const lista = document.getElementById('lista_agendamentos');
+  const titulo = document.getElementById('titulo_lista');
+  // Data local (toISOString é UTC e erra o dia após 21h no BRT)
+  const agoraLocal = new Date();
+  campoData.value = agoraLocal.getFullYear() + '-' + String(agoraLocal.getMonth() + 1).padStart(2, '0') + '-' + String(agoraLocal.getDate()).padStart(2, '0');
+
+  let base = []; // resultado do fetch (data ou todos); filtros sao client-side
+  const statusAtivos = new Set(STATUS_AGENDAMENTO);
+
+  const escapar = (v) => String(v == null ? '' : v).replace(/[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function aplicar() {
+    const txt = campoTexto.value.trim().toLowerCase();
+    const de = campoDe.value;
+    const ate = campoAte.value;
+
+    const dados = base.filter((a) => {
+      if (!statusAtivos.has(a.status)) return false;
+      if (txt && !(String(a.nome_cliente || '').toLowerCase().includes(txt) ||
+                   String(a.servico || '').toLowerCase().includes(txt))) return false;
+      if (de && a.data < de) return false;
+      if (ate && a.data > ate) return false;
+      return true;
+    });
+
+    const [campo, ordem] = campoOrdem.value.split('_');
+    dados.sort((x, y) => {
+      const c = campo === 'horario'
+        ? x.horario.localeCompare(y.horario) || x.data.localeCompare(y.data)
+        : x.data.localeCompare(y.data) || x.horario.localeCompare(y.horario);
+      return ordem === 'desc' ? -c : c;
+    });
+
+    renderizar(dados);
+    contagem.textContent = dados.length + ' de ' + base.length + ' agendamento(s)';
+  }
+
+  function renderizar(agendamentos) {
+    lista.innerHTML = '';
+    if (!agendamentos.length) {
+      statusLista.textContent = base.length ? 'Nada corresponde aos filtros atuais.' : '';
+      lista.innerHTML = '<div class="vazio"><span class="vazio-ico">🔍</span>Nenhum agendamento encontrado.</div>';
+      return;
+    }
+    statusLista.textContent = '';
+    agendamentos.forEach((a) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<div><p>' + escapar(a.nome_cliente) + ' - ' + escapar(a.servico) + '</p>' +
+        '<p class="t-meta">' + escapar(a.data.split('-').reverse().join('/')) + ' às ' + escapar(a.horario) + '</p></div>' +
+        '<span class="badge ' + escapar(a.status) + '">' + escapar(a.status) + '</span>';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mini perigo';
+      btn.textContent = 'Cancelar';
+      btn.onclick = async () => {
+        if (!confirm('Cancelar o agendamento #' + a.id + '?')) return;
+        if (!(await exigirLogin('login-empresa.html'))) return;
+        const r = await deletarAgendamento(a.id);
+        if (r.naoAutenticado) { exigirLogin('login-empresa.html'); return; }
+        if (r.sucesso) { toast('Agendamento cancelado.', 'info'); carregar(campoData.value || null); }
+        else toast('Erro: ' + r.erro, 'erro');
+      };
+      li.appendChild(btn);
+      lista.appendChild(li);
+    });
+  }
+
+  async function carregar(data) {
+    statusLista.textContent = '';
+    contagem.textContent = '\u2026';
+    lista.innerHTML = esqueleto(3);
+    const r = data ? await buscarAgendamentosPorData(data) : await listarAgendamentos();
+    if (!r.sucesso) {
+      statusLista.textContent = '';
+      contagem.textContent = '—';
+      lista.innerHTML = '<div class="vazio">Erro: ' + escapar(r.erro) + ' — o backend está rodando?</div>';
+      return;
+    }
+    base = r.dados;
+    titulo.textContent = data ? 'Agendamentos de ' + data.split('-').reverse().join('/') : 'Todos os agendamentos';
+    aplicar();
+  }
+
+  campoTexto.oninput = aplicar;
+  campoDe.onchange = aplicar;
+  campoAte.onchange = aplicar;
+  campoOrdem.onchange = aplicar;
+  montarChipsStatus(document.getElementById('chips_status'), statusAtivos, aplicar);
+
+  document.getElementById('btn_filtrar').onclick = () => carregar(campoData.value || null);
+  document.getElementById('btn_ver_todos').onclick = () => { campoData.value = ''; carregar(null); };
+  document.getElementById('btn_limpar').onclick = () => {
+    campoTexto.value = '';
+    campoDe.value = '';
+    campoAte.value = '';
+    campoData.value = '';
+    campoOrdem.value = 'data_asc';
+    statusAtivos.clear();
+    STATUS_AGENDAMENTO.forEach((st) => statusAtivos.add(st));
+    montarChipsStatus(document.getElementById('chips_status'), statusAtivos, aplicar);
+    carregar(null);
+  };
+  carregar(campoData.value);
+</script>
+
+<script src="../js/tema.js"></script>
+</body>
+</html>

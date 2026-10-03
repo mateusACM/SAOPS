@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Marque um horário: escolha o serviço, o dia e o horário em poucos passos no SAOPS.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/agendamento">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Agendar horário">
+  <meta property="og:description" content="Marque um horário: escolha o serviço, o dia e o horário em poucos passos no SAOPS.">
+  <meta property="og:url" content="https://saops.onrender.com/agendamento">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Agendar horário">
+  <meta name="twitter:description" content="Marque um horário: escolha o serviço, o dia e o horário em poucos passos no SAOPS.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Agendar horário</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <a href="busca.html">&larr; Voltar</a>
+    <h1 id="nome_prestador">Agendar horário</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+    <form id="form_agendamento" action="confirmacao-agendamento.html" method="get">
+
+      <section>
+        <h2>Seus dados</h2>
+        <label for="txt_nome">Nome completo</label>
+        <input type="text" id="txt_nome" name="nome_cliente" placeholder="Ex: João Silva" required>
+        <label for="txt_telefone">Telefone (opcional)</label>
+        <input type="tel" id="txt_telefone" name="telefone" placeholder="Ex: (11) 98765-4321">
+      </section>
+
+      <section>
+        <h2>Escolha o serviço</h2>
+        <div class="servicos-grid">
+          <label class="servico-card">
+            <input type="radio" id="txt_servico_corte" name="servico" value="corte" checked>
+            <span class="s-nome">Corte de cabelo</span>
+            <span class="s-detalhe">40 min</span>
+            <span class="s-preco">R$ 45</span>
+          </label>
+          <label class="servico-card">
+            <input type="radio" id="txt_servico_barba" name="servico" value="barba">
+            <span class="s-nome">Barba</span>
+            <span class="s-detalhe">25 min</span>
+            <span class="s-preco">R$ 30</span>
+          </label>
+          <label class="servico-card">
+            <input type="radio" id="txt_servico_combo" name="servico" value="combo">
+            <span class="s-nome">Corte + barba</span>
+            <span class="s-detalhe">60 min</span>
+            <span class="s-preco">R$ 65</span>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Data e horário</h2>
+        <label for="txt_data">Data</label>
+        <input type="date" id="txt_data" name="data" required>
+        <h3>Horários disponíveis</h3>
+        <p id="aviso_vagas" class="aviso-vagas"></p>
+        <div class="slots-grid" id="grade_horarios">
+          <label class="slot-pill"><input type="radio" name="horario" value="09:00" required>09:00</label>
+          <label class="slot-pill"><input type="radio" name="horario" value="10:00">10:00</label>
+          <label class="slot-pill"><input type="radio" name="horario" value="11:30">11:30</label>
+          <label class="slot-pill"><input type="radio" name="horario" value="14:00">14:00</label>
+          <label class="slot-pill"><input type="radio" name="horario" value="15:30">15:30</label>
+          <label class="slot-pill"><input type="radio" name="horario" value="16:30">16:30</label>
+        </div>
+      </section>
+
+      <button type="submit" id="btn_confirmar_agendamento">Confirmar agendamento</button>
+
+    </form>
+  </main>
+<!-- IMPORTAR OS ARQUIVOS DE API E CATÁLOGO -->
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script src="../js/prestadores.js"></script>
+
+<!-- SCRIPT PARA LIDAR COM O FORMULÁRIO -->
+<script>
+    // Mostra o prestador escolhido (vem de detalhes-prestador.html?prestador=ID)
+    const prestadorId = new URLSearchParams(window.location.search).get('prestador');
+    const prestador = prestadorId && typeof buscarPrestadorPorId === 'function'
+      ? buscarPrestadorPorId(prestadorId)
+      : null;
+    document.getElementById('nome_prestador').textContent = prestador ? prestador.nome : 'Agendar horário';
+    // Data mínima = hoje (evita erro "datas passadas" do backend)
+    // Aceita ?data=YYYY-MM-DD (vem do calendário)
+    const campoData = document.getElementById('txt_data');
+    // Data local (toISOString é UTC e erra o dia após 21h no BRT)
+    const agora = new Date();
+    const hoje = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
+    campoData.min = hoje;
+    const dataParam = new URLSearchParams(window.location.search).get('data');
+    campoData.value = (dataParam && dataParam >= hoje) ? dataParam : hoje;
+
+    // Marca horários ocupados consultando o backend
+    async function atualizarVagas() {
+      const aviso = document.getElementById('aviso_vagas');
+      const radios = [...form.querySelectorAll('input[name="horario"]')];
+      radios.forEach((r) => { r.disabled = false; });
+      aviso.className = 'aviso-vagas';
+
+      const data = campoData.value;
+      if (!data) { aviso.textContent = ''; return; }
+      aviso.textContent = 'Verificando horários...';
+      const r = await buscarAgendamentosPorData(data);
+      if (!r.sucesso) {
+        aviso.textContent = 'Não foi possível verificar vagas: ' + r.erro;
+        return;
+      }
+      const ocupados = new Set(r.dados.map((a) => a.horario));
+      let livres = 0;
+      radios.forEach((radio) => {
+        if (ocupados.has(radio.value)) {
+          radio.disabled = true;
+          if (radio.checked) radio.checked = false;
+        } else livres++;
+      });
+      if (livres === 0) {
+        aviso.textContent = 'Todos os horários deste dia estão ocupados. Escolha outra data.';
+        aviso.classList.add('aviso');
+      } else {
+        aviso.textContent = livres + ' de ' + radios.length + ' horários livres em ' + data.split('-').reverse().join('/') + '.';
+        aviso.classList.add('ok');
+      }
+    }
+
+    campoData.addEventListener('change', atualizarVagas);
+
+    // Preenche nome/telefone salvos anteriormente
+    document.getElementById('txt_nome').value = localStorage.getItem('nome_cliente') || '';
+    document.getElementById('txt_telefone').value = localStorage.getItem('telefone') || '';
+
+    // Pega o formulário
+    const form = document.getElementById('form_agendamento');
+
+    // Carrega as vagas da data inicial
+    if (typeof buscarAgendamentosPorData === 'function') atualizarVagas();
+
+    // Quando o formulário é enviado
+    form.addEventListener('submit', async (evento) => {
+        evento.preventDefault(); // Não recarrega a página
+
+        // Pega os dados do formulário
+        const servico = form.querySelector('input[name="servico"]:checked').value;
+        const horarioEl = form.querySelector('input[name="horario"]:checked');
+        const nome_cliente = document.getElementById('txt_nome').value.trim();
+        const telefone = document.getElementById('txt_telefone').value.trim();
+        const data = campoData.value;
+
+        if (!nome_cliente) {
+            toast('Preencha seu nome.', 'erro');
+            return;
+        }
+        if (!data) {
+            toast('Escolha a data.', 'erro');
+            return;
+        }
+        if (!horarioEl) {
+            toast('Escolha um horário.', 'erro');
+            return;
+        }
+
+        // Salva para reaproveitar nas próximas vezes
+        localStorage.setItem('nome_cliente', nome_cliente);
+        localStorage.setItem('telefone', telefone);
+
+        // Dados que vão pra API
+        const dados = {
+            nome_cliente: nome_cliente,
+            servico: servico,
+            data: data,
+            horario: horarioEl.value,
+            telefone: telefone,
+            status: "agendado"
+        };
+
+        const btn = document.getElementById('btn_confirmar_agendamento');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+
+        try {
+            if (!(await exigirLogin('login-cliente.html'))) return;
+            // Chama a API
+            const resultado = await criarAgendamento(dados);
+
+            if (resultado.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
+
+            if (resultado.sucesso) {
+                // Sucesso! Guarda o ID para a tela de confirmação e redireciona
+                try { sessionStorage.setItem('ultimo_agendamento_id', String(resultado.dados.id)); } catch (e) {}
+                window.location.href = 'confirmacao-agendamento.html?id=' + resultado.dados.id;
+            } else {
+                // Erro! Mostra mensagem
+                toast('Erro: ' + resultado.erro, 'erro');
+            }
+        } catch (e) {
+            toast('Sem conexão com o servidor. Rode npm start na pasta Backend.', 'erro');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Confirmar agendamento';
+        }
+    });
+</script>
+<script src="../js/tema.js"></script>
+</body>
+</html>

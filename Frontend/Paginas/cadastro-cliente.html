@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Crie sua conta de cliente gratuita no SAOPS e comece a agendar horários.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/cadastro-cliente">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Criar conta (cliente)">
+  <meta property="og:description" content="Crie sua conta de cliente gratuita no SAOPS e comece a agendar horários.">
+  <meta property="og:url" content="https://saops.onrender.com/cadastro-cliente">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Criar conta (cliente)">
+  <meta name="twitter:description" content="Crie sua conta de cliente gratuita no SAOPS e comece a agendar horários.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Criar conta (cliente)</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <a href="login-cliente.html">&larr; Voltar</a>
+    <h1>Criar conta</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+    <p id="erro_cadastro" class="erro-msg" hidden></p>
+    <form id="form_cadastro_cliente" action="busca.html" method="get">
+      <label for="txt_nome_cadastro_cliente">Nome completo</label>
+      <input type="text" id="txt_nome_cadastro_cliente" name="nome" placeholder="Seu nome" required>
+
+      <label for="txt_email_cadastro_cliente">E-mail</label>
+      <input type="email" id="txt_email_cadastro_cliente" name="email" placeholder="voce@email.com" required>
+
+      <label for="txt_telefone_cadastro_cliente">Telefone</label>
+      <input type="tel" id="txt_telefone_cadastro_cliente" name="telefone" placeholder="(00) 00000-0000" required>
+
+      <label for="txt_senha_cadastro_cliente">Senha</label>
+      <input type="password" id="txt_senha_cadastro_cliente" name="senha" placeholder="********" required>
+
+      <label for="txt_confirmar_senha_cadastro_cliente">Confirmar senha</label>
+      <input type="password" id="txt_confirmar_senha_cadastro_cliente" name="confirmar-senha" placeholder="********" required>
+
+      <button type="submit" id="btn_criar_conta_cliente">Criar conta</button>
+    </form>
+
+    <a href="login-cliente.html">Já tenho conta</a>
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script>
+  // Cadastro real: cria a conta no backend e entra (cookie HttpOnly)
+  document.getElementById('form_cadastro_cliente').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const erro = document.getElementById('erro_cadastro');
+    const nome = document.getElementById('txt_nome_cadastro_cliente').value.trim();
+    const email = document.getElementById('txt_email_cadastro_cliente').value.trim().toLowerCase();
+    const telefone = document.getElementById('txt_telefone_cadastro_cliente').value.trim();
+    const senha = document.getElementById('txt_senha_cadastro_cliente').value;
+    const confirmar = document.getElementById('txt_confirmar_senha_cadastro_cliente').value;
+
+    if (senha !== confirmar) {
+      erro.hidden = false;
+      erro.textContent = 'As senhas não conferem. Digite a mesma senha nos dois campos.';
+      return;
+    }
+    if (senha.length < 4) {
+      erro.hidden = false;
+      erro.textContent = 'A senha deve ter ao menos 4 caracteres.';
+      return;
+    }
+
+    const btn = document.getElementById('btn_criar_conta_cliente');
+    btn.disabled = true;
+    const r = await cadastrarConta({ nome, email, senha, telefone, tipo: 'cliente' });
+    btn.disabled = false;
+
+    if (!r.sucesso) {
+      erro.hidden = false;
+      erro.textContent = r.erro;
+      return;
+    }
+    salvarSessaoLocal(r.usuario);
+    toast('Conta criada! Bem-vindo(a), ' + r.usuario.nome + '.', 'sucesso');
+    setTimeout(() => { window.location.href = voltarAposLogin('busca.html'); }, 400);
+  });
+</script>
+
+<script src="../js/tema.js"></script>
+</body>
+</html>

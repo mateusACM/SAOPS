@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Cadastre seu negócio no SAOPS e gerencie sua agenda de agendamentos.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/cadastro-empresa">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Cadastrar negócio">
+  <meta property="og:description" content="Cadastre seu negócio no SAOPS e gerencie sua agenda de agendamentos.">
+  <meta property="og:url" content="https://saops.onrender.com/cadastro-empresa">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Cadastrar negócio">
+  <meta name="twitter:description" content="Cadastre seu negócio no SAOPS e gerencie sua agenda de agendamentos.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Cadastrar negócio</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <a href="login-empresa.html">&larr; Voltar</a>
+    <h1>Cadastrar meu negócio</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+    <p id="erro_cadastro" class="erro-msg" hidden></p>
+    <form id="form_cadastro_empresa" action="agenda-prestador.html" method="get">
+      <label for="txt_nome_negocio_cadastro_empresa">Nome do negócio</label>
+      <input type="text" id="txt_nome_negocio_cadastro_empresa" name="nome-negocio" placeholder="Ex: Barbearia Vintage" required>
+
+      <label for="txt_categoria_cadastro_empresa">Categoria</label>
+      <select id="txt_categoria_cadastro_empresa" name="categoria" required>
+        <option value="">Selecione</option>
+        <option value="barbearia">Barbearia</option>
+        <option value="salao">Salão de beleza</option>
+        <option value="clinica">Clínica</option>
+        <option value="outro">Outro</option>
+      </select>
+
+      <label for="txt_cnpj_cadastro_empresa">CNPJ</label>
+      <input type="text" id="txt_cnpj_cadastro_empresa" name="cnpj" placeholder="00.000.000/0000-00" required>
+
+      <label for="txt_endereco_cadastro_empresa">Endereço</label>
+      <input type="text" id="txt_endereco_cadastro_empresa" name="endereco" placeholder="Rua, número, bairro" required>
+
+      <label for="txt_email_cadastro_empresa">E-mail</label>
+      <input type="email" id="txt_email_cadastro_empresa" name="email" placeholder="empresa@email.com" required>
+
+      <label for="txt_senha_cadastro_empresa">Senha</label>
+      <input type="password" id="txt_senha_cadastro_empresa" name="senha" placeholder="********" required>
+
+      <button type="submit" id="btn_cadastrar_negocio">Cadastrar negócio</button>
+    </form>
+
+    <a href="login-empresa.html">Já tenho conta</a>
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script>
+  // Cadastro real do negócio: conta no backend + dados extras locais
+  document.getElementById('form_cadastro_empresa').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const erro = document.getElementById('erro_cadastro');
+    const negocio = document.getElementById('txt_nome_negocio_cadastro_empresa').value.trim();
+    const categoria = document.getElementById('txt_categoria_cadastro_empresa').value;
+    const cnpj = document.getElementById('txt_cnpj_cadastro_empresa').value.trim();
+    const endereco = document.getElementById('txt_endereco_cadastro_empresa').value.trim();
+    const email = document.getElementById('txt_email_cadastro_empresa').value.trim().toLowerCase();
+    const senha = document.getElementById('txt_senha_cadastro_empresa').value;
+
+    if (!categoria) {
+      erro.hidden = false;
+      erro.textContent = 'Escolha a categoria do negócio.';
+      return;
+    }
+    if (senha.length < 4) {
+      erro.hidden = false;
+      erro.textContent = 'A senha deve ter ao menos 4 caracteres.';
+      return;
+    }
+
+    const btn = document.getElementById('btn_cadastrar_negocio');
+    btn.disabled = true;
+    const r = await cadastrarConta({ nome: negocio, email, senha, tipo: 'empresa' });
+    btn.disabled = false;
+
+    if (!r.sucesso) {
+      erro.hidden = false;
+      erro.textContent = r.erro;
+      return;
+    }
+    // Dados do negócio (sem senha!) continuam locais
+    localStorage.setItem('saops_empresa', JSON.stringify({ negocio, categoria, cnpj, endereco, email }));
+    salvarSessaoLocal(r.usuario);
+    toast('Negócio cadastrado!', 'sucesso');
+    setTimeout(() => { window.location.href = voltarAposLogin('agenda-prestador.html'); }, 400);
+  });
+</script>
+
+<script src="../js/tema.js"></script>
+</body>
+</html>

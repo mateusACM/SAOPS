@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Entre como prestador no SAOPS com e-mail, Google ou Microsoft.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/login-empresa">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Entrar como prestador">
+  <meta property="og:description" content="Entre como prestador no SAOPS com e-mail, Google ou Microsoft.">
+  <meta property="og:url" content="https://saops.onrender.com/login-empresa">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Entrar como prestador">
+  <meta name="twitter:description" content="Entre como prestador no SAOPS com e-mail, Google ou Microsoft.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Entrar como prestador</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <a href="index.html">&larr; Voltar</a>
+    <h1>Entrar como prestador</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+    <p id="erro_login" class="erro-msg" hidden></p>
+    <form id="form_login_empresa" action="agenda-prestador.html" method="get">
+      <label for="txt_identificador_login_empresa">E-mail ou CNPJ</label>
+      <input type="text" id="txt_identificador_login_empresa" name="identificador" placeholder="empresa@email.com" required>
+
+      <label for="txt_senha_login_empresa">Senha</label>
+      <input type="password" id="txt_senha_login_empresa" name="senha" placeholder="********" required>
+
+      <button type="submit" id="btn_entrar_empresa">Entrar</button>
+    </form>
+
+    <div class="social-login">
+      <p class="social-titulo">ou entre com</p>
+      <div id="google_btn"></div>
+      <button type="button" id="ms_btn" class="social-btn">
+        <span class="icone-ms"><i></i><i></i><i></i><i></i></span> Entrar com Microsoft
+      </button>
+    </div>
+
+    <a href="cadastro-empresa.html">Cadastrar meu negócio</a>
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script src="../js/social.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+  // Login real do prestador via API (aceita e-mail ou nome do negócio)
+  document.getElementById('form_login_empresa').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const erro = document.getElementById('erro_login');
+    const identificador = document.getElementById('txt_identificador_login_empresa').value.trim().toLowerCase();
+    const senha = document.getElementById('txt_senha_login_empresa').value;
+
+    const btn = document.getElementById('btn_entrar_empresa');
+    btn.disabled = true;
+    const r = await entrarConta(identificador, senha);
+    btn.disabled = false;
+
+    if (!r.sucesso) {
+      erro.hidden = false;
+      erro.textContent = r.erro;
+      return;
+    }
+    salvarSessaoLocal(r.usuario);
+    window.location.href = voltarAposLogin('agenda-prestador.html');
+  });
+
+  iniciarLoginSocial({ destino: 'agenda-prestador.html' });
+</script>
+
+<script src="../js/tema.js"></script>
+</body>
+</html>

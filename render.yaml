@@ -1,0 +1,15 @@
+# Render Blueprint - SAOPS
+# Deploy automático a cada push no GitHub
+services:
+  - type: web
+    name: saops
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install --prefix Backend
+    startCommand: npm start --prefix Backend
+    healthCheckPath: /api/status
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production

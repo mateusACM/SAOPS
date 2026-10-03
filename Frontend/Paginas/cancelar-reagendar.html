@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Cancele ou reagende um agendamento pelo SAOPS.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/cancelar-reagendar">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Cancelar ou reagendar">
+  <meta property="og:description" content="Cancele ou reagende um agendamento pelo SAOPS.">
+  <meta property="og:url" content="https://saops.onrender.com/cancelar-reagendar">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Cancelar ou reagendar">
+  <meta name="twitter:description" content="Cancele ou reagende um agendamento pelo SAOPS.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Cancelar ou reagendar</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <a href="perfil.html">&larr; Voltar</a>
+    <h1>Cancelar ou reagendar</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <section id="detalhes">
+      <div class="sk-card"><div class="sk-linha larga"></div><div class="sk-linha media"></div><div class="sk-linha curta"></div></div>
+    </section>
+
+    <section>
+      <h2>O que você quer fazer?</h2>
+
+      <form id="form_reagendar" action="#" method="post">
+        <label for="txt_nova_data">Nova data</label>
+        <input type="date" id="txt_nova_data" name="nova-data" required>
+        <label for="txt_novo_horario">Escolher novo horário</label>
+        <select id="txt_novo_horario" name="novo-horario">
+          <option value="">Selecione um horário</option>
+          <option value="09:00">09:00</option>
+          <option value="10:00">10:00</option>
+          <option value="11:30">11:30</option>
+          <option value="14:00">14:00</option>
+          <option value="15:30">15:30</option>
+          <option value="16:30">16:30</option>
+        </select>
+        <button type="submit" id="btn_confirmar_novo_horario">Confirmar novo horário</button>
+      </form>
+
+      <form id="form_cancelar" action="#" method="post">
+        <label for="txt_motivo_cancelamento">Motivo do cancelamento (opcional)</label>
+        <input type="text" id="txt_motivo_cancelamento" name="motivo" placeholder="Ex: Imprevisto de última hora">
+        <button type="submit" id="btn_cancelar_agendamento">Cancelar agendamento</button>
+      </form>
+    </section>
+
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  const box = document.getElementById('detalhes');
+  const campoNovaData = document.getElementById('txt_nova_data');
+  const agoraLocal = new Date();
+  const hojeLocal = agoraLocal.getFullYear() + '-' + String(agoraLocal.getMonth() + 1).padStart(2, '0') + '-' + String(agoraLocal.getDate()).padStart(2, '0');
+  campoNovaData.min = hojeLocal;
+  let atual = null;
+
+  (async () => {
+    if (!id) {
+      box.innerHTML = '<p>Informe o agendamento: abra esta página pelo "Meu perfil" ou use cancelar-reagendar.html?id=1</p>';
+      return;
+    }
+    const r = await buscarAgendamentoPorId(id);
+    if (!r.sucesso) {
+      box.innerHTML = '<p>Erro: ' + esc(r.erro) + '</p>';
+      return;
+    }
+    atual = r.dados;
+    campoNovaData.value = atual.data;
+    box.innerHTML = '<p><strong>' + esc(atual.servico) + '</strong></p>' +
+      '<p>' + esc(atual.nome_cliente) + ' — ' + esc(atual.data) + ' às ' + esc(atual.horario) + '</p>' +
+      '<p>Status: ' + esc(atual.status) + ' (ID ' + esc(atual.id) + ')</p>';
+  })();
+
+  document.getElementById('form_reagendar').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!atual) { toast('Carregue um agendamento primeiro.', 'erro'); return; }
+    const novaData = campoNovaData.value;
+    const novoHorario = document.getElementById('txt_novo_horario').value;
+    if (!novaData || !novoHorario) { toast('Escolha a nova data e o novo horário.', 'erro'); return; }
+    if (!(await exigirLogin('login-cliente.html'))) return;
+    const r = await atualizarAgendamento(atual.id, {
+      nome_cliente: atual.nome_cliente,
+      servico: atual.servico,
+      data: novaData,
+      horario: novoHorario,
+      telefone: atual.telefone,
+      status: atual.status
+    });
+    if (r.sucesso) {
+      toast('Reagendado para ' + novaData + ' às ' + novoHorario + '!', 'sucesso');
+      window.location.href = 'perfil.html';
+    } else toast('Erro: ' + r.erro, 'erro');
+  });
+
+  document.getElementById('form_cancelar').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!atual) { toast('Carregue um agendamento primeiro.', 'erro'); return; }
+    if (!confirm('Cancelar o agendamento #' + atual.id + '?')) return;
+    if (!(await exigirLogin('login-cliente.html'))) return;
+    const r = await deletarAgendamento(atual.id);
+    if (r.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
+    if (r.sucesso) {
+      toast('Agendamento cancelado.', 'info');
+      window.location.href = 'perfil.html';
+    } else toast('Erro: ' + r.erro, 'erro');
+  });
+</script>
+
+<script src="../js/tema.js"></script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Cadastre e edite os serviços do seu negócio no SAOPS.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/gerenciar-servicos">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Gerenciar serviços">
+  <meta property="og:description" content="Cadastre e edite os serviços do seu negócio no SAOPS.">
+  <meta property="og:url" content="https://saops.onrender.com/gerenciar-servicos">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Gerenciar serviços">
+  <meta name="twitter:description" content="Cadastre e edite os serviços do seu negócio no SAOPS.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Gerenciar serviços</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <a href="agenda-prestador.html">&larr; Voltar</a>
+    <h1>Meus serviços</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <section>
+      <h2>Meus serviços</h2>
+      <p id="status_servicos">Carregando...</p>
+      <ul id="lista_servicos"></ul>
+    </section>
+
+    <section>
+      <h2 id="titulo_form_servico">Adicionar novo serviço</h2>
+      <form id="form_servico" action="#" method="post">
+        <label for="txt_nome_servico">Nome do serviço</label>
+        <input type="text" id="txt_nome_servico" name="nome" placeholder="Ex: Coloração" required maxlength="120">
+
+        <label for="txt_desc_servico">Descrição (opcional)</label>
+        <textarea id="txt_desc_servico" name="descricao" rows="2" maxlength="500" placeholder="Ex: Com hidratação inclusa"></textarea>
+
+        <label for="txt_duracao_servico">Duração (minutos)</label>
+        <input type="number" id="txt_duracao_servico" name="duracao_min" placeholder="30" min="1" step="1">
+
+        <label for="txt_preco_servico">Preço (R$)</label>
+        <input type="number" id="txt_preco_servico" name="preco" placeholder="50" min="0" step="0.01">
+
+        <button type="submit" id="btn_salvar_servico">Adicionar serviço</button>
+        <button type="button" id="btn_cancelar_edicao" class="secundario" hidden>Cancelar edição</button>
+      </form>
+    </section>
+
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script>
+  const lista = document.getElementById('lista_servicos');
+  const status = document.getElementById('status_servicos');
+  const form = document.getElementById('form_servico');
+  const tituloForm = document.getElementById('titulo_form_servico');
+  const btnSalvar = document.getElementById('btn_salvar_servico');
+  const btnCancelarEd = document.getElementById('btn_cancelar_edicao');
+  const campoNome = document.getElementById('txt_nome_servico');
+  const campoDesc = document.getElementById('txt_desc_servico');
+  const campoDuracao = document.getElementById('txt_duracao_servico');
+  const campoPreco = document.getElementById('txt_preco_servico');
+  let editandoId = null;
+
+  const formatarPreco = (p) => (p === null || p === undefined || p === '')
+    ? 'Preço a combinar'
+    : 'R$ ' + Number(p).toFixed(2).replace('.', ',');
+
+  function renderizar(servicos) {
+    lista.innerHTML = '';
+    if (!servicos.length) {
+      status.textContent = '';
+      lista.innerHTML = '<div class="vazio"><span class="vazio-ico">\u2702\uFE0F</span>Nenhum serviço cadastrado. Adicione o primeiro abaixo!</div>';
+      return;
+    }
+    status.textContent = servicos.length + ' serviço(s) cadastrado(s).';
+    servicos.forEach((serv) => {
+      const li = document.createElement('li');
+      const partes = [];
+      if (serv.duracao_min) partes.push(esc(serv.duracao_min) + ' min');
+      partes.push(formatarPreco(serv.preco));
+      li.innerHTML = '<div><p>' + esc(serv.nome) + '</p>' +
+        (serv.descricao ? '<p class="t-meta">' + esc(serv.descricao) + '</p>' : '') +
+        '<p class="t-meta">' + partes.join(' · ') + '</p></div>';
+      const acoes = document.createElement('div');
+      acoes.className = 't-acoes';
+      const btnEd = document.createElement('button');
+      btnEd.type = 'button';
+      btnEd.className = 'mini secundario';
+      btnEd.textContent = 'Editar';
+      btnEd.onclick = () => {
+        editandoId = serv.id;
+        campoNome.value = serv.nome || '';
+        campoDesc.value = serv.descricao || '';
+        campoDuracao.value = serv.duracao_min || '';
+        campoPreco.value = (serv.preco === null || serv.preco === undefined) ? '' : serv.preco;
+        tituloForm.textContent = 'Editar serviço';
+        btnSalvar.textContent = 'Salvar alterações';
+        btnCancelarEd.hidden = false;
+        campoNome.focus();
+      };
+      const btnDel = document.createElement('button');
+      btnDel.type = 'button';
+      btnDel.className = 'mini perigo';
+      btnDel.textContent = 'Remover';
+      btnDel.onclick = async () => {
+        if (!confirm('Remover "' + serv.nome + '"?')) return;
+        const r = await deletarServico(serv.id);
+        if (r.naoAutenticado) { exigirLogin('login-empresa.html'); return; }
+        if (r.sucesso) { toast('Serviço removido.', 'info'); carregar(); }
+        else toast('Erro: ' + r.erro, 'erro');
+      };
+      acoes.append(btnEd, btnDel);
+      li.appendChild(acoes);
+      lista.appendChild(li);
+    });
+  }
+
+  async function carregar() {
+    if (!(await exigirLogin('login-empresa.html'))) return;
+    status.textContent = '';
+    lista.innerHTML = esqueleto(3);
+    const r = await meusServicos();
+    if (r.naoAutenticado) { exigirLogin('login-empresa.html'); return; }
+    if (!r.sucesso) {
+      lista.innerHTML = '<div class="vazio">Erro: ' + esc(r.erro) + ' — o backend está rodando?</div>';
+      return;
+    }
+    renderizar(r.dados);
+  }
+
+  function limparForm() {
+    editandoId = null;
+    form.reset();
+    tituloForm.textContent = 'Adicionar novo serviço';
+    btnSalvar.textContent = 'Adicionar serviço';
+    btnCancelarEd.hidden = true;
+  }
+
+  btnCancelarEd.onclick = limparForm;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!(await exigirLogin('login-empresa.html'))) return;
+    const dados = {
+      nome: campoNome.value.trim(),
+      descricao: campoDesc.value.trim(),
+      duracao_min: campoDuracao.value === '' ? null : Number(campoDuracao.value),
+      preco: campoPreco.value === '' ? null : Number(campoPreco.value)
+    };
+    if (!dados.nome) { toast('Dê um nome ao serviço.', 'erro'); return; }
+    const r = editandoId ? await atualizarServico(editandoId, dados) : await criarServico(dados);
+    if (r.naoAutenticado) { exigirLogin('login-empresa.html'); return; }
+    if (!r.sucesso) { toast('Erro: ' + r.erro, 'erro'); return; }
+    toast(editandoId ? 'Serviço atualizado!' : 'Serviço adicionado!', 'sucesso');
+    limparForm();
+    carregar();
+  });
+
+  carregar();
+</script>
+<script src="../js/tema.js"></script>
+</body>
+</html>

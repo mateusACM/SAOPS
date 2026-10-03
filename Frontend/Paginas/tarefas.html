@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Organize tarefas do dia a dia com categorias, prazos e conclusão no SAOPS.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://saops.onrender.com/tarefas">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Minhas tarefas">
+  <meta property="og:description" content="Organize tarefas do dia a dia com categorias, prazos e conclusão no SAOPS.">
+  <meta property="og:url" content="https://saops.onrender.com/tarefas">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Minhas tarefas">
+  <meta name="twitter:description" content="Organize tarefas do dia a dia com categorias, prazos e conclusão no SAOPS.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Minhas tarefas</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <h1>Minhas tarefas</h1>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <section>
+      <h2>Nova tarefa</h2>
+      <form id="form_tarefa">
+        <label for="txt_titulo">O que precisa ser feito?</label>
+        <input type="text" id="txt_titulo" placeholder="Ex: Levar o carro pra revisão" required>
+
+        <div class="servicos-grid" style="margin-top:10px">
+          <div>
+            <label for="txt_data_tarefa">Data</label>
+            <input type="date" id="txt_data_tarefa" required>
+          </div>
+          <div>
+            <label for="txt_hora_tarefa">Hora (opcional)</label>
+            <input type="time" id="txt_hora_tarefa">
+          </div>
+          <div>
+            <label for="txt_categoria">Categoria</label>
+            <select id="txt_categoria">
+              <option value="pessoal">Pessoal</option>
+              <option value="casa">Casa</option>
+              <option value="trabalho">Trabalho</option>
+              <option value="estudos">Estudos</option>
+              <option value="saude">Saúde</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+        </div>
+
+        <p class="erro-msg" id="erro_tarefa" hidden></p>
+        <button type="submit" id="btn_criar_tarefa" style="margin-top:12px">Adicionar tarefa</button>
+      </form>
+    </section>
+
+    <section>
+      <div class="cal-bar">
+        <button type="button" id="btn_dia_ant" class="secundario mini">&larr;</button>
+        <input type="date" id="filtro_data" style="width:auto; margin:0">
+        <button type="button" id="btn_dia_prox" class="secundario mini">&rarr;</button>
+        <button type="button" id="btn_hoje" class="secundario mini">Hoje</button>
+        <button type="button" id="btn_mostrar_tudo" class="secundario mini">Todas</button>
+      </div>
+      <p id="status_tarefas">Carregando...</p>
+      <ul id="lista_tarefas"></ul>
+    </section>
+
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script>
+  const campoDataFiltro = document.getElementById('filtro_data');
+  const campoData = document.getElementById('txt_data_tarefa');
+  const statusLista = document.getElementById('status_tarefas');
+  const lista = document.getElementById('lista_tarefas');
+  const erroBox = document.getElementById('erro_tarefa');
+
+  const isoLocal = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const hojeIso = isoLocal(new Date());
+  const dataParam = new URLSearchParams(location.search).get('data');
+  campoData.value = dataParam || hojeIso;
+  campoData.min = '2020-01-01';
+  campoDataFiltro.value = dataParam || hojeIso;
+
+  function moverFiltro(dias) {
+    if (!campoDataFiltro.value) campoDataFiltro.value = hojeIso; // modo "Todas": volta pro dia atual
+    const [a, m, d] = campoDataFiltro.value.split('-').map(Number);
+    const dt = new Date(a, m - 1, d + dias);
+    campoDataFiltro.value = isoLocal(dt);
+    carregar();
+  }
+  document.getElementById('btn_dia_ant').onclick = () => moverFiltro(-1);
+  document.getElementById('btn_dia_prox').onclick = () => moverFiltro(1);
+  document.getElementById('btn_hoje').onclick = () => { campoDataFiltro.value = hojeIso; carregar(); };
+  document.getElementById('btn_mostrar_tudo').onclick = () => { campoDataFiltro.value = ''; carregar(); };
+  campoDataFiltro.onchange = carregar;
+
+  function pintar(tarefas) {
+    lista.innerHTML = '';
+    if (!tarefas.length) {
+      lista.innerHTML = '<div class="vazio"><span class="vazio-ico">✔️</span>Nenhuma tarefa por aqui. Adicione a primeira acima!</div>';
+      statusLista.textContent = 'Tudo em ordem.';
+      return;
+    }
+    const abertas = tarefas.filter((t) => !t.concluido).length;
+    statusLista.textContent = tarefas.length + ' tarefa(s) — ' + abertas + ' pendente(s).';
+
+    tarefas.forEach((t) => {
+      const li = document.createElement('li');
+      li.className = 'tarefa-item' + (t.concluido ? ' feita' : '');
+
+      const esq = document.createElement('div');
+      esq.innerHTML = '<p class="t-titulo">' + esc(t.titulo) + '</p>' +
+        '<p class="t-meta">' + esc(t.data.split('-').reverse().join('/')) + (t.hora ? ' às ' + esc(t.hora) : '') +
+        ' <span class="cat-chip ' + esc(t.categoria) + '">' + esc(t.categoria) + '</span></p>';
+
+      const acoes = document.createElement('div');
+      acoes.className = 't-acoes';
+
+      const btnOk = document.createElement('button');
+      btnOk.type = 'button';
+      btnOk.className = 'mini ' + (t.concluido ? 'secundario' : '');
+      btnOk.textContent = t.concluido ? 'Reabrir' : 'Concluir';
+      btnOk.onclick = async () => {
+        if (!(await exigirLogin('login-cliente.html'))) return;
+        const r = await atualizarTarefa(t.id, { concluido: t.concluido ? 0 : 1 });
+        if (r.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
+        if (r.sucesso) { toast(t.concluido ? 'Tarefa reaberta.' : 'Tarefa concluída! 🎉', 'sucesso'); carregar(); }
+        else toast('Erro: ' + r.erro, 'erro');
+      };
+
+      const btnDel = document.createElement('button');
+      btnDel.type = 'button';
+      btnDel.className = 'mini perigo';
+      btnDel.textContent = 'Excluir';
+      btnDel.onclick = async () => {
+        if (!(await exigirLogin('login-cliente.html'))) return;
+        const r = await deletarTarefa(t.id);
+        if (r.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
+        if (r.sucesso) { toast('Tarefa excluída.', 'info'); carregar(); }
+        else toast('Erro: ' + r.erro, 'erro');
+      };
+
+      acoes.append(btnOk, btnDel);
+      li.append(esq, acoes);
+      lista.appendChild(li);
+    });
+  }
+
+  async function carregar() {
+    statusLista.textContent = '';
+    lista.innerHTML = esqueleto(3);
+    const filtro = campoDataFiltro.value ? { data: campoDataFiltro.value } : {};
+    const r = await listarTarefas(filtro);
+    if (!r.sucesso) {
+      lista.innerHTML = '<div class="vazio">Erro: ' + esc(r.erro) + ' — o backend está rodando?</div>';
+      statusLista.textContent = '';
+      return;
+    }
+    pintar(r.dados);
+  }
+
+  document.getElementById('form_tarefa').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const titulo = document.getElementById('txt_titulo').value.trim();
+    const data = campoData.value;
+    const hora = document.getElementById('txt_hora_tarefa').value || undefined;
+    const categoria = document.getElementById('txt_categoria').value;
+
+    if (!titulo) { erroBox.hidden = false; erroBox.textContent = 'Escreva o título da tarefa.'; return; }
+    if (!data) { erroBox.hidden = false; erroBox.textContent = 'Escolha a data.'; return; }
+    erroBox.hidden = true;
+
+    const btn = document.getElementById('btn_criar_tarefa');
+    if (!(await exigirLogin('login-cliente.html'))) return;
+    btn.disabled = true;
+    const r = await criarTarefa({ titulo, data, hora, categoria });
+    btn.disabled = false;
+    if (r.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
+
+    if (r.sucesso) {
+      toast('Tarefa criada!', 'sucesso');
+      document.getElementById('txt_titulo').value = '';
+      document.getElementById('txt_hora_tarefa').value = '';
+      if (!campoDataFiltro.value || campoDataFiltro.value !== data) campoDataFiltro.value = data;
+      carregar();
+    } else {
+      erroBox.hidden = false;
+      erroBox.textContent = r.erro;
+      toast('Erro: ' + r.erro, 'erro');
+    }
+  });
+
+  carregar();
+</script>
+<script src="../js/tema.js"></script>
+</body>
+</html>
