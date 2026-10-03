@@ -6,6 +6,24 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.0] - 2026-10-03
+
+### Adicionado
+- **PostgreSQL (Supabase)** no lugar do SQLite: dados persistem e não zeram mais a cada deploy
+- Script `Backend/migrar-pra-pg.js` — migração SQLite → PostgreSQL (dados, schema, índices e sequências)
+
+### Alterado
+- `database.js` reescrito: pool `pg` + helpers async (`q`/`qGet`/`qAll`), schema em dialeto PostgreSQL
+- `server.js` e `auth.js`: 33 chamadas convertidas para `async/await` com placeholders `$1..$n`
+- `INSERT ... RETURNING id` no lugar de `this.lastID`; `rowCount` no lugar de `this.changes`
+- Erros de corrida no índice único (`23505`) → `409` (antes `SQLITE_CONSTRAINT`)
+- Id de rota não numérico → `404` (no PostgreSQL daria erro de tipo)
+
+### Corrigido
+- `DELETE /tarefas/:id` estava sem `exigirLogin` — escrita de tarefa agora exige login como as demais
+
+---
+
 ## [1.1.0] - 2026-09-29
 
 ### Renomeado

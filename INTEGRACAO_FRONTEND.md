@@ -12,7 +12,7 @@ Referência da API REST para o frontend (`Frontend/js/api.js`). Leituras (`GET`)
 
 **Porta:** `3000` local (`PORT` no Render)
 
-**Ambiente:** Node.js 18+ + Express 5 + SQLite
+**Ambiente:** Node.js 18+ + Express 5 + PostgreSQL (Supabase)
 
 ---
 
@@ -27,13 +27,8 @@ PORT=3000 node Backend/server.js
 
 Deve aparecer (entre outras):
 ```
- Conectado ao banco de dados SQLite
- Tabela "agendamentos" pronta!
- Tabela "tarefas" pronta!
- Tabela "usuarios" pronta!
- Tabela "sessoes" pronta!
- Tabela "servicos" pronta!
- Índice único data+horario pronto!
+ Conectado ao PostgreSQL (Supabase)
+ Tabelas e índices prontos!
 ```
 
 ---
