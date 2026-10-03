@@ -50,20 +50,89 @@
 <script>
   const id = new URLSearchParams(window.location.search).get('id');
   const main = document.getElementById('conteudo');
+  const dias = [
+    { chave: 'dom', nome: 'Domingo' }, { chave: 'seg', nome: 'Segunda' }, { chave: 'ter', nome: 'Terça' },
+    { chave: 'qua', nome: 'Quarta' }, { chave: 'qui', nome: 'Quinta' }, { chave: 'sex', nome: 'Sexta' }, { chave: 'sab', nome: 'Sábado' }
+  ];
+  const elemento = (tag, classe, texto) => { const item = document.createElement(tag); if (classe) item.className = classe; if (texto !== undefined) item.textContent = texto; return item; };
+  function estadoAtendimento(disponibilidade) {
+    const agora = new Date(); const hoje = agora.getDay();
+    const minutos = agora.getHours() * 60 + agora.getMinutes();
+    const expedienteHoje = disponibilidade[dias[hoje].chave];
+    if (expedienteHoje?.ativo) {
+      const abre = Number(expedienteHoje.inicio.slice(0, 2)) * 60 + Number(expedienteHoje.inicio.slice(3));
+      const fecha = Number(expedienteHoje.fim.slice(0, 2)) * 60 + Number(expedienteHoje.fim.slice(3));
+      if (minutos >= abre && minutos < fecha) return ['status-open', '● Atendendo agora'];
+      if (minutos < abre) return ['status-next', `Abre hoje às ${expedienteHoje.inicio}`];
+    }
+    for (let pulo = 1; pulo <= 7; pulo += 1) {
+      const dia = dias[(hoje + pulo) % 7]; const expediente = disponibilidade[dia.chave];
+      if (expediente?.ativo) return ['status-next', `Abre ${pulo === 1 ? 'amanhã' : `na ${dia.nome.toLowerCase()}`} às ${expediente.inicio}`];
+    }
+    return ['status-next', 'Agenda indisponível no momento'];
+  }
   listarPrestadores().then((r) => {
     const p = r.sucesso && r.dados.find((x) => String(x.id) === String(id));
     if (!p) { document.getElementById('nome_prestador').textContent = 'Não encontrado'; main.textContent = 'Prestador não encontrado. Volte à busca e escolha novamente.'; return; }
-    document.title = 'SAOPS - ' + p.nome; document.getElementById('nome_prestador').textContent = p.nome; main.replaceChildren();
-    const sec = document.createElement('section'); const titulo = document.createElement('h2'); titulo.textContent = 'Sobre o negócio'; sec.append(titulo);
-    const meta = document.createElement('p'); meta.textContent = [p.categoria, p.endereco].filter(Boolean).join(' · '); sec.append(meta); main.append(sec);
-    const disponibilidade = p.disponibilidade || {}; const nomesDias = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
-    const diasAtivos = Object.entries(nomesDias).filter(([dia]) => disponibilidade[dia]?.ativo);
-    if (diasAtivos.length) { const horas = document.createElement('p'); horas.className = 't-meta'; const horarios = diasAtivos.map(([dia, nome]) => `${nome} ${disponibilidade[dia].inicio}–${disponibilidade[dia].fim}`); horas.textContent = `Atendimento: ${horarios.join(' · ')} · horários a cada ${disponibilidade.intervalo_min || 30} min`; sec.append(horas); }
-    const serv = document.createElement('section'); const h = document.createElement('h2'); h.textContent = 'Serviços'; serv.append(h);
-    if (!p.servicos.length) { const vazio = document.createElement('p'); vazio.textContent = 'Este prestador ainda não cadastrou serviços.'; serv.append(vazio); }
-    p.servicos.forEach((s) => { const item = document.createElement('article'); const n = document.createElement('h3'); n.textContent = s.nome; item.append(n); if (s.descricao) { const d = document.createElement('p'); d.textContent = s.descricao; item.append(d); } const info = document.createElement('p'); info.textContent = [s.duracao_min ? `${s.duracao_min} min` : '', s.preco == null ? 'Preço a combinar' : `R$ ${Number(s.preco).toFixed(2).replace('.', ',')}`].filter(Boolean).join(' · '); item.append(info); serv.append(item); });
-    main.append(serv); const agendar = document.createElement('a'); agendar.href = 'agendamento.html?prestador=' + encodeURIComponent(p.id); const botao = document.createElement('button'); botao.type = 'button'; botao.textContent = 'Agendar horário'; agendar.append(botao); main.append(agendar);
-  });
+    const nomesCategorias = { barbearia: 'Barbearia', salao: 'Salão de beleza', clinica: 'Clínica', outro: 'Outro' };
+    const categoria = nomesCategorias[p.categoria] || 'Prestador independente';
+    const resumo = p.bio || `${categoria} ${p.endereco ? `em ${p.endereco}` : 'no SAOPS'} com ${p.servicos.length} serviço${p.servicos.length === 1 ? '' : 's'} disponível${p.servicos.length === 1 ? '' : 'is'}.`;
+    document.title = `${p.nome} | SAOPS`;
+    document.querySelector('meta[name="description"]')?.setAttribute('content', resumo.slice(0, 155));
+    document.querySelector('meta[property="og:title"]')?.setAttribute('content', `${p.nome} | SAOPS`);
+    document.querySelector('meta[property="og:description"]')?.setAttribute('content', resumo.slice(0, 200));
+    document.getElementById('nome_prestador').textContent = p.nome;
+    main.replaceChildren(); main.className = 'public-profile';
+    const disponibilidade = p.disponibilidade || {};
+
+    const hero = elemento('section', 'public-profile-hero');
+    const avatar = elemento('div', 'public-profile-avatar', p.nome.trim().split(/\s+/).slice(0, 2).map((parte) => parte[0]).join('').toUpperCase()); avatar.setAttribute('aria-hidden', 'true');
+    const intro = elemento('div', 'public-profile-intro');
+    intro.append(elemento('p', 'auth-card-kicker', 'CONHEÇA SEU PRÓXIMO PROFISSIONAL'), elemento('h2', '', p.nome));
+    const tags = elemento('div', 'profile-tags'); tags.append(elemento('span', 'profile-tag', categoria));
+    if (p.endereco) tags.append(elemento('span', 'profile-tag', `⌖ ${p.endereco}`));
+    const [estadoClasse, estadoTexto] = estadoAtendimento(disponibilidade); tags.append(elemento('span', `profile-tag ${estadoClasse}`, estadoTexto));
+    intro.append(tags);
+    const fatos = elemento('div', 'profile-facts');
+    const fatoServicos = elemento('div', ''); fatoServicos.append(elemento('strong', '', String(p.servicos.length)), elemento('span', '', `serviço${p.servicos.length === 1 ? '' : 's'}`)); fatos.append(fatoServicos);
+    if (p.anos_experiencia !== null && p.anos_experiencia !== undefined) { const fatoExperiencia = elemento('div', ''); fatoExperiencia.append(elemento('strong', '', `${Number(p.anos_experiencia)}${Number(p.anos_experiencia) === 1 ? ' ano' : ' anos'}`), elemento('span', '', 'de experiência')); fatos.append(fatoExperiencia); }
+    const compartilhar = elemento('button', 'secundario profile-share', '↗ Compartilhar perfil'); compartilhar.type = 'button';
+    compartilhar.addEventListener('click', async () => {
+      try { if (navigator.share) await navigator.share({ title: p.nome, text: `Conheça ${p.nome} no SAOPS`, url: location.href }); else { await navigator.clipboard.writeText(location.href); toast('Link do perfil copiado!', 'sucesso'); } }
+      catch (erro) { if (erro.name !== 'AbortError') toast('Não foi possível compartilhar neste dispositivo.', 'erro'); }
+    });
+    intro.append(fatos); hero.append(avatar, intro, compartilhar); main.append(hero);
+
+    const sobre = elemento('section', 'public-profile-panel profile-about');
+    sobre.append(elemento('p', 'auth-card-kicker', 'UM POUCO SOBRE'), elemento('h2', '', 'Um atendimento com identidade'));
+    sobre.append(elemento('p', 'profile-bio', p.bio || 'Este profissional ainda não escreveu uma apresentação. Entre em contato pelo agendamento e conheça o trabalho de perto.'));
+    if (p.instagram) { const instagram = elemento('a', 'profile-instagram', `◎  Acompanhe @${p.instagram}`); instagram.href = `https://www.instagram.com/${encodeURIComponent(p.instagram)}/`; instagram.target = '_blank'; instagram.rel = 'noopener noreferrer'; sobre.append(instagram); }
+    main.append(sobre);
+
+    const agenda = elemento('section', 'public-profile-panel profile-hours');
+    const agendaHeading = elemento('div', 'profile-section-heading'); const agendaTitle = elemento('div', ''); agendaTitle.append(elemento('p', 'auth-card-kicker', 'PLANEJE SUA VISITA'), elemento('h2', '', 'Horários de atendimento')); agendaHeading.append(agendaTitle); agenda.append(agendaHeading);
+    const grade = elemento('div', 'profile-week');
+    dias.slice(1).concat(dias.slice(0, 1)).forEach(({ chave, nome }) => {
+      const d = disponibilidade[chave]; const card = elemento('div', `profile-day${d?.ativo ? ' ativo' : ''}`);
+      card.append(elemento('strong', '', nome.slice(0, 3)), elemento('span', '', d?.ativo ? `${d.inicio} – ${d.fim}` : 'Fechado')); grade.append(card);
+    });
+    agenda.append(grade, elemento('p', 'profile-hours-note', `Novos horários a cada ${disponibilidade.intervalo_min || 30} minutos.`)); main.append(agenda);
+
+    const servicos = elemento('section', 'public-profile-panel profile-services');
+    const heading = elemento('div', 'profile-section-heading'); heading.append(elemento('div', '', '')); heading.firstChild.append(elemento('p', 'auth-card-kicker', 'ESCOLHA O QUE COMBINA COM VOCÊ'), elemento('h2', '', 'Serviços'));
+    heading.append(elemento('span', 'profile-service-count', `${p.servicos.length} opção${p.servicos.length === 1 ? '' : 'ões'}`)); servicos.append(heading);
+    if (!p.servicos.length) servicos.append(elemento('p', 'business-help', 'Este prestador ainda não cadastrou serviços.'));
+    p.servicos.forEach((s) => {
+      const card = elemento('article', 'public-service-card'); const copy = elemento('div', '');
+      copy.append(elemento('h3', '', s.nome)); if (s.descricao) copy.append(elemento('p', 'public-service-description', s.descricao));
+      const detalhes = [s.duracao_min ? `◷ ${s.duracao_min} min` : '', s.preco == null ? 'Preço a combinar' : `R$ ${Number(s.preco).toFixed(2).replace('.', ',')}`].filter(Boolean).join('  ·  ');
+      const rodape = elemento('div', 'public-service-footer'); rodape.append(elemento('span', 'public-service-meta', detalhes));
+      const link = elemento('a', 'public-service-book', 'Agendar →'); link.href = `agendamento.html?prestador=${encodeURIComponent(p.id)}&servico=${encodeURIComponent(s.nome)}`; rodape.append(link);
+      card.append(copy, rodape); servicos.append(card);
+    });
+    main.append(servicos);
+    if (p.servicos.length) { const cta = elemento('a', 'profile-main-cta', 'Encontrar um horário disponível'); cta.href = `agendamento.html?prestador=${encodeURIComponent(p.id)}`; servicos.append(cta); }
+  }).catch(() => { main.textContent = 'Não foi possível carregar este perfil agora. Tente novamente.'; });
 </script>
 
 <script src="../js/tema.js"></script>

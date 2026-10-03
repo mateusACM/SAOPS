@@ -93,6 +93,9 @@ function publico(u) {
         foto: u.foto || null,
         categoria: u.categoria || null,
         endereco: u.endereco || null,
+        bio: u.bio || null,
+        anos_experiencia: u.anos_experiencia ?? null,
+        instagram: u.instagram || null,
         disponibilidade: u.disponibilidade || DISPONIBILIDADE_PADRAO,
     };
 }
@@ -218,20 +221,26 @@ router.put('/negocio', exigirLogin, async (req, res) => {
     if (req.usuario.tipo !== 'empresa') {
         return res.status(403).json({ sucesso: false, erro: 'Só prestadores têm perfil de negócio.' });
     }
-    const { nome, categoria, endereco } = req.body || {};
+    const { nome, categoria, endereco, bio, anos_experiencia, instagram } = req.body || {};
     const nomeFinal = String(nome || '').trim();
     const categoriaFinal = String(categoria || '').trim().slice(0, 60) || null;
     const enderecoFinal = String(endereco || '').trim().slice(0, 200) || null;
+    const bioFinal = String(bio || '').trim();
+    const experienciaFinal = anos_experiencia === '' || anos_experiencia == null ? null : Number(anos_experiencia);
+    const instagramFinal = String(instagram || '').trim().replace(/^@/, '').toLowerCase() || null;
     if (!nomeFinal) return res.status(400).json({ sucesso: false, erro: 'Informe o nome do negócio.' });
     if (nomeFinal.length > 120) return res.status(400).json({ sucesso: false, erro: 'Nome muito longo (máx. 120).' });
+    if (bioFinal.length > 800) return res.status(400).json({ sucesso: false, erro: 'A apresentação deve ter no máximo 800 caracteres.' });
+    if (experienciaFinal !== null && (!Number.isInteger(experienciaFinal) || experienciaFinal < 0 || experienciaFinal > 80)) return res.status(400).json({ sucesso: false, erro: 'Informe anos de experiência entre 0 e 80.' });
+    if (instagramFinal && !/^[a-z0-9._]{1,30}$/.test(instagramFinal)) return res.status(400).json({ sucesso: false, erro: 'Informe apenas o usuário do Instagram (até 30 letras, números, pontos ou _).' });
     const horario = req.body?.disponibilidade === undefined
         ? { sucesso: true, dados: req.usuario.disponibilidade || DISPONIBILIDADE_PADRAO }
         : normalizarDisponibilidade(req.body.disponibilidade);
     if (!horario.sucesso) return res.status(400).json({ sucesso: false, erro: horario.erro });
     try {
         const novo = await q(
-            'UPDATE usuarios SET nome = $1, categoria = $2, endereco = $3, disponibilidade = $4 WHERE id = $5 RETURNING *',
-            [nomeFinal, categoriaFinal, enderecoFinal, horario.dados, req.usuario.id]
+            'UPDATE usuarios SET nome = $1, categoria = $2, endereco = $3, bio = $4, anos_experiencia = $5, instagram = $6, disponibilidade = $7 WHERE id = $8 RETURNING *',
+            [nomeFinal, categoriaFinal, enderecoFinal, bioFinal || null, experienciaFinal, instagramFinal, horario.dados, req.usuario.id]
         );
         res.json({ sucesso: true, usuario: publico(novo.rows[0]) });
     } catch (e) {

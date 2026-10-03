@@ -16,6 +16,9 @@
       <form id="form_negocio" class="business-profile-form"><label for="nome_negocio">Nome do negócio</label><input id="nome_negocio" maxlength="120" autocomplete="organization" required>
         <label for="categoria_negocio">Categoria</label><select id="categoria_negocio"><option value="">Selecione</option><option value="barbearia">Barbearia</option><option value="salao">Salão de beleza</option><option value="clinica">Clínica</option><option value="outro">Outro</option></select>
         <label for="endereco_negocio">Endereço</label><input id="endereco_negocio" maxlength="200" autocomplete="street-address" placeholder="Rua, número, bairro">
+        <label for="bio_negocio" class="profile-wide-field">Sua apresentação</label><textarea id="bio_negocio" class="profile-wide-field" maxlength="800" rows="4" placeholder="Conte sua história, seu jeito de atender e o que faz seu trabalho especial."></textarea>
+        <label for="experiencia_negocio">Anos de experiência</label><input id="experiencia_negocio" type="number" min="0" max="80" step="1" placeholder="Ex.: 5">
+        <label for="instagram_negocio">Instagram</label><input id="instagram_negocio" maxlength="30" autocomplete="off" placeholder="seu.perfil">
         <button type="submit">Salvar perfil</button></form>
     </section>
     <section class="business-hours-card"><div class="business-heading"><div><p class="auth-card-kicker">Sua agenda</p><h2>Horários de atendimento</h2></div><span class="service-icon" aria-hidden="true">◷</span></div><p class="business-help">Marque os dias e defina quando seus clientes podem agendar.</p><p id="status_horarios" role="status"></p>
@@ -65,7 +68,7 @@
       });
     }
     async function salvarPerfil(mensagem) {
-      const out = await chamarAuth('negocio', { metodo: 'PUT', dados: { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim(), disponibilidade: disponibilidadeAtual() } });
+      const out = await chamarAuth('negocio', { metodo: 'PUT', dados: { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim(), bio: q('bio_negocio').value.trim(), anos_experiencia: q('experiencia_negocio').value, instagram: q('instagram_negocio').value.trim(), disponibilidade: disponibilidadeAtual() } });
       informar('status_negocio', out.sucesso ? mensagem : (out.erro || 'Não foi possível salvar.'));
       informar('status_horarios', out.sucesso ? mensagem : (out.erro || 'Não foi possível salvar.'));
     }
@@ -98,7 +101,7 @@
       if (!(await exigirLogin('login-empresa.html'))) return;
       const atual = await usuarioAtual();
       if (!atual.sucesso || atual.usuario.tipo !== 'empresa') { window.location.replace('painel-prestador.html'); return; }
-      const u = atual.usuario; negocioId = u.id; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || ''; preencherDisponibilidade(u.disponibilidade);
+      const u = atual.usuario; negocioId = u.id; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || ''; q('bio_negocio').value = u.bio || ''; q('experiencia_negocio').value = u.anos_experiencia ?? ''; q('instagram_negocio').value = u.instagram || ''; preencherDisponibilidade(u.disponibilidade);
       carregarServicos();
     }
     q('compartilhar_negocio').addEventListener('click', async () => {

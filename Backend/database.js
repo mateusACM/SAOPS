@@ -70,6 +70,9 @@ const SCHEMA = [
         foto TEXT,
         categoria TEXT,
         endereco TEXT,
+        bio TEXT,
+        anos_experiencia INTEGER,
+        instagram TEXT,
         disponibilidade JSONB NOT NULL DEFAULT '{"intervalo_min":30,"dom":{"ativo":false,"inicio":"09:00","fim":"17:00"},"seg":{"ativo":true,"inicio":"09:00","fim":"17:00"},"ter":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qua":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qui":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sex":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sab":{"ativo":false,"inicio":"09:00","fim":"17:00"}}'::jsonb,
         criado_em TEXT DEFAULT (to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS'))
     )`,
@@ -101,6 +104,9 @@ const SCHEMA = [
     `CREATE INDEX IF NOT EXISTS idx_tarefas_usuario ON tarefas(usuario_id)`,
     `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS categoria TEXT`,
     `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS endereco TEXT`,
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS bio TEXT`,
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS anos_experiencia INTEGER`,
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS instagram TEXT`,
     `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS disponibilidade JSONB NOT NULL DEFAULT '{"intervalo_min":30,"dom":{"ativo":false,"inicio":"09:00","fim":"17:00"},"seg":{"ativo":true,"inicio":"09:00","fim":"17:00"},"ter":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qua":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qui":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sex":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sab":{"ativo":false,"inicio":"09:00","fim":"17:00"}}'::jsonb`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes(expira_em)`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)`

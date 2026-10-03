@@ -43,6 +43,7 @@
 | ✅ **Tarefas** | Categorias (casa, trabalho, estudos, saúde, pessoal), prazos e conclusão |
 | ✂️ **Serviços do prestador** | CRUD real: nome, descrição, preço e duração — cada dono gerencia os seus |
 | 🕒 **Expediente do prestador** | Define dias, abertura, fechamento e intervalo; a reserva mostra apenas horários compatíveis com o serviço |
+| ✨ **Perfil público completo** | Apresentação, experiência, Instagram, status de atendimento, agenda semanal e agendamento direto por serviço |
 | 🔗 **Compartilhar perfil** | Link direto do perfil público do prestador para enviar aos clientes |
 | 🔔 **Lembretes** | Aviso no site + notificação do navegador quando faltar pouco pro horário |
 | 🔐 **Login social** | Conta local (e-mail/senha com bcrypt) ou Google via OAuth |
