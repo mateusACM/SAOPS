@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="P2bUnYwtNrX8jA_so4X4Z8p4juoPq2-bmeh1EdOssuQ">
+  <meta name="description" content="Painel do prestador SAOPS: resumo de agendamentos de hoje, da semana e por status.">
+  <meta name="theme-color" content="#03071f">
+  <meta name="robots" content="noindex, follow">
+  <link rel="canonical" href="https://saops.onrender.com/painel-prestador">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SAOPS">
+  <meta property="og:title" content="SAOPS - Painel do prestador">
+  <meta property="og:description" content="Resumo de agendamentos de hoje, da semana e por status no SAOPS.">
+  <meta property="og:url" content="https://saops.onrender.com/painel-prestador">
+  <meta property="og:image" content="https://saops.onrender.com/img/og-saops.jpg">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SAOPS - Painel do prestador">
+  <meta name="twitter:description" content="Resumo de agendamentos de hoje, da semana e por status no SAOPS.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>SAOPS - Painel do prestador</title>
+  <link rel="stylesheet" href="../CSS/style.css">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
+    <h1>Painel do prestador</h1>
+    <a href="agenda-prestador.html">Agenda completa</a>
+    <a href="gerenciar-servicos.html">Meus serviços</a>
+    <nav class="topnav">
+      <a href="calendario.html">Calendário</a>
+      <a href="tarefas.html">Tarefas</a>
+      <a href="busca.html">Buscar</a>
+      <a href="sobre-nos.html">Sobre</a>
+      <a href="perfil.html"><span class="avatar-mini" data-avatar>P</span> Perfil</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <section>
+      <h2>Resumo</h2>
+      <div class="painel-cards">
+        <div class="painel-card">
+          <div class="num" id="num_hoje">—</div>
+          <div class="rot">Agendamentos hoje</div>
+        </div>
+        <div class="painel-card">
+          <div class="num" id="num_semana">—</div>
+          <div class="rot">Nesta semana (seg–dom)</div>
+        </div>
+        <div class="painel-card">
+          <div class="num" id="num_pendentes">—</div>
+          <div class="rot">Pendentes (agendados/confirmados)</div>
+        </div>
+      </div>
+      <div class="painel-status" id="contagens_status" aria-label="Agendamentos por status"></div>
+      <p id="status_resumo" class="t-meta">Carregando...</p>
+    </section>
+
+    <section>
+      <h2 id="titulo_hoje">Hoje</h2>
+      <p id="status_hoje">Carregando agendamentos de hoje...</p>
+      <ul id="lista_hoje"></ul>
+    </section>
+
+    <section>
+      <h2>Ações rápidas</h2>
+      <div class="conf-acoes" style="justify-content:flex-start">
+        <a href="agenda-prestador.html">
+          <button type="button">Ver agenda completa</button>
+        </a>
+        <a href="gerenciar-servicos.html">
+          <button type="button" class="secundario">Meus serviços</button>
+        </a>
+        <a href="calendario.html">
+          <button type="button" class="secundario">Calendário</button>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+<script src="../js/toast.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/lembretes.js"></script>
+<script>
+  // Painel exige login de prestador (sem sessão: volta pro login da empresa)
+  exigirLogin('login-empresa.html');
+
+  const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const isoLocal = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+  async function carregarPainel() {
+    const statusResumo = document.getElementById('status_resumo');
+    const r = await listarAgendamentos();
+    if (!r.sucesso) {
+      statusResumo.textContent = 'Erro: ' + r.erro + ' — o backend está rodando?';
+      return;
+    }
+    const todos = r.dados;
+    const agora = new Date();
+    const hojeIso = isoLocal(agora);
+
+    // Semana atual: segunda a domingo
+    const desloc = (agora.getDay() + 6) % 7;
+    const segunda = new Date(agora);
+    segunda.setDate(agora.getDate() - desloc);
+    const domingo = new Date(segunda);
+    domingo.setDate(segunda.getDate() + 6);
+    const segIso = isoLocal(segunda);
+    const domIso = isoLocal(domingo);
+
+    const hoje = todos.filter((a) => a.data === hojeIso);
+    const semana = todos.filter((a) => a.data >= segIso && a.data <= domIso);
+    const pendentes = todos.filter((a) => a.status === 'agendado' || a.status === 'confirmado');
+
+    document.getElementById('num_hoje').textContent = hoje.length;
+    document.getElementById('num_semana').textContent = semana.length;
+    document.getElementById('num_pendentes').textContent = pendentes.length;
+    document.getElementById('titulo_hoje').textContent =
+      'Hoje, ' + agora.getDate() + ' de ' + MESES_CURTOS[agora.getMonth()];
+
+    // Contagem por status (geral)
+    const porStatus = { agendado: 0, confirmado: 0, concluido: 0, cancelado: 0 };
+    todos.forEach((a) => { if (porStatus[a.status] != null) porStatus[a.status]++; });
+    const contagens = document.getElementById('contagens_status');
+    contagens.innerHTML = '';
+    Object.keys(porStatus).forEach((st) => {
+      const s = document.createElement('span');
+      s.className = 'cont';
+      s.innerHTML = '<span class="badge ' + esc(st) + '">' + esc(st) + '</span> <b>' + porStatus[st] + '</b>';
+      contagens.appendChild(s);
+    });
+
+    statusResumo.textContent = todos.length + ' agendamento(s) no total · semana de ' +
+      segIso.split('-').reverse().join('/') + ' a ' + domIso.split('-').reverse().join('/');
+
+    // Lista de hoje
+    const statusHoje = document.getElementById('status_hoje');
+    const listaHoje = document.getElementById('lista_hoje');
+    hoje.sort((x, y) => x.horario.localeCompare(y.horario));
+    if (!hoje.length) {
+      statusHoje.textContent = '';
+      listaHoje.innerHTML = '<div class="vazio"><span class="vazio-ico">✨</span>Nada agendado para hoje — dia livre!</div>';
+      return;
+    }
+    statusHoje.textContent = hoje.length + ' agendamento(s) hoje.';
+    listaHoje.innerHTML = '';
+    hoje.forEach((a) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<div><p>' + esc(a.nome_cliente) + ' - ' + esc(a.servico) + '</p>' +
+        '<p class="t-meta">' + esc(a.horario) + (a.telefone ? ' · ' + esc(a.telefone) : '') + '</p></div>' +
+        '<span class="badge ' + esc(a.status) + '">' + esc(a.status) + '</span>';
+      listaHoje.appendChild(li);
+    });
+  }
+
+  carregarPainel();
+</script>
+
+<script src="../js/tema.js"></script>
+</body>
+</html>

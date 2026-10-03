@@ -45,7 +45,8 @@ const SCHEMA = [
         data TEXT NOT NULL,
         horario TEXT NOT NULL,
         telefone TEXT,
-        status TEXT DEFAULT 'agendado'
+        status TEXT DEFAULT 'agendado',
+        usuario_id BIGINT
     )`,
     `CREATE TABLE IF NOT EXISTS tarefas (
         id BIGSERIAL PRIMARY KEY,
@@ -84,6 +85,9 @@ const SCHEMA = [
     )`,
     // Impede double-booking mesmo em escritas concorrentes
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_ag_data_horario ON agendamentos(data, horario)`,
+    // "Meus agendamentos": ligação agendamento -> usuário da sessão
+    `ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS usuario_id BIGINT`,
+    `CREATE INDEX IF NOT EXISTS idx_ag_usuario ON agendamentos(usuario_id)`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes(expira_em)`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)`
 ];

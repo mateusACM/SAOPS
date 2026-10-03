@@ -51,6 +51,9 @@
         <a href="busca.html">
           <button type="button" id="btn_sou_cliente">Marcar horário</button>
         </a>
+        <a href="login-cliente.html">
+          <button type="button" id="btn_entrar" class="secundario">Entrar</button>
+        </a>
         <a href="calendario.html">
           <button type="button" id="btn_ver_calendario" class="secundario">Ver calendário</button>
         </a>
@@ -171,6 +174,22 @@
 
 <script src="../js/toast.js"></script>
 <script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script>
+  // Botão "Entrar" vira "Meu perfil" quando já existe sessão
+  (async () => {
+    try {
+      const r = await usuarioAtual();
+      if (r && r.sucesso && r.usuario) {
+        const b = document.getElementById('btn_entrar');
+        if (b) {
+          b.textContent = 'Meu perfil';
+          b.closest('a').href = 'perfil.html';
+        }
+      }
+    } catch (e) { /* sem backend: mantém "Entrar" */ }
+  })();
+</script>
 <script src="../js/tema.js"></script>
 </body>
 </html>

@@ -148,7 +148,14 @@
       }
 
       if (!fora) {
-        cell.onclick = () => { diaSelecionado = iso; desenhar(); mostrarDia(iso); };
+        // Seleciona no lugar, sem redesenhar a grade (evita o "flash")
+        cell.onclick = () => {
+          const sel = grade.querySelector('.cal-cell.selecionado');
+          if (sel && sel !== cell) sel.classList.remove('selecionado');
+          cell.classList.add('selecionado');
+          diaSelecionado = iso;
+          mostrarDia(iso);
+        };
       }
       grade.appendChild(cell);
     }
@@ -215,7 +222,8 @@
   }
 
   async function carregar() {
-    grade.innerHTML = esqueletoCard('sk-full');
+    // Esqueleto só na primeira carga — recarregar não pisca a grade
+    if (grade.dataset.primeira !== '1') grade.innerHTML = esqueletoCard('sk-full');
     const [r, rt] = await Promise.all([listarAgendamentos(), listarTarefas()]);
     if (!r.sucesso) {
       statusCal.textContent = 'Erro: ' + r.erro + ' (backend rodando?)';
@@ -233,6 +241,7 @@
 
     statusCal.textContent = r.dados.length + ' agendamento(s) e ' +
       (rt.sucesso ? rt.dados.length : 0) + ' tarefa(s) no total.';
+    grade.dataset.primeira = '1';
     desenhar();
     if (diaSelecionado) mostrarDia(diaSelecionado);
   }

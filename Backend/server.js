@@ -178,10 +178,10 @@ app.post('/agendamentos', exigirLogin, async (req, res) => {
         }
 
         // Se passou em todas as validações, insere no banco
-        const sql = `INSERT INTO agendamentos (nome_cliente, servico, data, horario, telefone, status)
-                     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`;
+        const sql = `INSERT INTO agendamentos (nome_cliente, servico, data, horario, telefone, status, usuario_id)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`;
 
-        const criado = await q(sql, [String(nome_cliente).trim(), String(servico).trim(), data, horario, telefone || null, statusFinal]);
+        const criado = await q(sql, [String(nome_cliente).trim(), String(servico).trim(), data, horario, telefone || null, statusFinal, req.usuario.id]);
         res.status(201).json({ 
             mensagem: ' Agendamento criado com sucesso!',
             id: criado.rows[0].id,
@@ -280,6 +280,27 @@ app.get('/agendamentos/sorted/:field/:order', async (req, res) => {
         });
     } catch (e) { erro500(res, e); }
 });
+
+// READ - Meus agendamentos (só os da conta logada)
+// Precisa vir ANTES de /agendamentos/:id senão "meus" vira um id
+
+app.get('/agendamentos/meus', exigirLogin, async (req, res) => {
+    try {
+        const nome = String(req.usuario.nome || '').trim();
+        const rows = await qAll(
+            `SELECT * FROM agendamentos
+             WHERE usuario_id = $1 OR lower(nome_cliente) = lower($2)
+             ORDER BY data, horario`,
+            [req.usuario.id, nome]
+        );
+        res.json({
+            mensagem: ' Meus agendamentos',
+            total: rows.length,
+            agendamentos: rows
+        });
+    } catch (e) { erro500(res, e); }
+});
+
 // READ - Buscar agendamento por ID
 
 app.get('/agendamentos/:id', async (req, res) => {

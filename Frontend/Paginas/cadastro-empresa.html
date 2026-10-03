@@ -42,7 +42,7 @@
 
   <main>
     <p id="erro_cadastro" class="erro-msg" hidden></p>
-    <form id="form_cadastro_empresa" action="agenda-prestador.html" method="get">
+    <form id="form_cadastro_empresa" action="painel-prestador.html" method="get">
       <label for="txt_nome_negocio_cadastro_empresa">Nome do negócio</label>
       <input type="text" id="txt_nome_negocio_cadastro_empresa" name="nome-negocio" placeholder="Ex: Barbearia Vintage" required>
 
@@ -114,7 +114,7 @@
     localStorage.setItem('saops_empresa', JSON.stringify({ negocio, categoria, cnpj, endereco, email }));
     salvarSessaoLocal(r.usuario);
     toast('Negócio cadastrado!', 'sucesso');
-    setTimeout(() => { window.location.href = voltarAposLogin('agenda-prestador.html'); }, 400);
+    setTimeout(() => { window.location.href = voltarAposLogin('painel-prestador.html'); }, 400);
   });
 </script>
 
