@@ -2,7 +2,7 @@
 
 Histórico completo do que foi feito no **SAOPS** (Sistema de Agendamento) — do TCC original ao sistema atual em produção: https://saops.onrender.com/
 
-> Repositório: https://github.com/nicolaskmazzini-coder/SAOPS · Licença MIT · Documentação técnica em `DIAGRAMAS.md`, `ARQUITETURA.md` e `README.md`.
+> Repositório: https://github.com/nicolaskmazzini-coder/SAOPS-new · Licença MIT · Documentação técnica em `DIAGRAMAS.md`, `ARQUITETURA.md` e `README.md`.
 
 ---
 
