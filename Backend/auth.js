@@ -6,6 +6,7 @@ const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { q, qGet, qAll, AGORA_SQL } = require('./database');
+const { enviarBoasVindas } = require('./email');
 
 const router = express.Router();
 
@@ -104,16 +105,23 @@ router.get('/config', (req, res) => {
 router.post('/cadastro', async (req, res) => {
     const { nome, email, senha, telefone, tipo, categoria, endereco } = req.body || {};
     const emailNorm = String(email || '').trim().toLowerCase();
+    const nomeFinal = String(nome || '').trim();
 
-    if (!nome || !nome.trim()) return res.status(400).json({ sucesso: false, erro: 'Informe seu nome.' });
+    if (!nomeFinal) return res.status(400).json({ sucesso: false, erro: 'Informe seu nome.' });
+    if (nomeFinal.length > 120) return res.status(400).json({ sucesso: false, erro: 'O nome deve ter no máximo 120 caracteres.' });
     if (!EMAIL_REGEX.test(emailNorm)) return res.status(400).json({ sucesso: false, erro: 'E-mail inválido.' });
+    if (emailNorm.length > 254) return res.status(400).json({ sucesso: false, erro: 'O e-mail deve ter no máximo 254 caracteres.' });
     if (!senha || senha.length < 8) return res.status(400).json({ sucesso: false, erro: 'A senha deve ter ao menos 8 caracteres.' });
-    if (senha.length > 72) return res.status(400).json({ sucesso: false, erro: 'A senha deve ter no máximo 72 caracteres.' });
+    if (Buffer.byteLength(String(senha), 'utf8') > 72) return res.status(400).json({ sucesso: false, erro: 'A senha deve ter no máximo 72 bytes.' });
     if (telefone && !validarTelefoneLocal(telefone)) return res.status(400).json({ sucesso: false, erro: 'Telefone inválido. Deve ter entre 10 e 11 dígitos.' });
 
     const tipoFinal = tipo === 'empresa' ? 'empresa' : 'cliente';
     const categoriaFinal = String(categoria || '').trim().slice(0, 60) || null;
     const enderecoFinal = String(endereco || '').trim().slice(0, 200) || null;
+    if (tipoFinal === 'empresa') {
+        if (!['barbearia', 'salao', 'clinica', 'outro'].includes(categoriaFinal)) return res.status(400).json({ sucesso: false, erro: 'Escolha uma categoria válida para o negócio.' });
+        if (!enderecoFinal) return res.status(400).json({ sucesso: false, erro: 'Informe o endereço do negócio.' });
+    }
 
     try {
         const existe = await qGet('SELECT id FROM usuarios WHERE email = $1', [emailNorm]);
@@ -123,8 +131,9 @@ router.post('/cadastro', async (req, res) => {
         // e-mail já é UNIQUE no banco: corrida aqui vira 409
         const novo = await q(
             'INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo, categoria, endereco) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [nome.trim(), emailNorm, hash, telefone || null, tipoFinal, categoriaFinal, enderecoFinal]
+            [nomeFinal, emailNorm, hash, telefone ? String(telefone).trim() : null, tipoFinal, categoriaFinal, enderecoFinal]
         );
+        enviarBoasVindas(novo.rows[0]).catch((e) => console.error('Falha ao enviar boas-vindas pelo Resend:', e.message));
         criarSessao(req, res, novo.rows[0]);
     } catch (e) {
         if (e.code === '23505') return res.status(409).json({ sucesso: false, erro: 'Já existe uma conta com este e-mail.' });
@@ -241,6 +250,7 @@ router.post('/oauth', async (req, res) => {
             'INSERT INTO usuarios (nome, email, provider, provider_id, foto, tipo) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
             [dados.nome, dados.email, provider, dados.id, dados.foto || null, tipo === 'empresa' ? 'empresa' : 'cliente']
         );
+        enviarBoasVindas(novo.rows[0]).catch((e) => console.error('Falha ao enviar boas-vindas pelo Resend:', e.message));
         criarSessao(req, res, novo.rows[0]);
     } catch (e) {
         if (e.code === '23505') return res.status(409).json({ sucesso: false, erro: 'Já existe uma conta com este e-mail.' });

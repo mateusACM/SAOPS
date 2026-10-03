@@ -42,6 +42,8 @@
 | 🗓️ **Calendário mensal** | Visão dia a dia de agendamentos + tarefas, com semana começando na segunda |
 | ✅ **Tarefas** | Categorias (casa, trabalho, estudos, saúde, pessoal), prazos e conclusão |
 | ✂️ **Serviços do prestador** | CRUD real: nome, descrição, preço e duração — cada dono gerencia os seus |
+| ✉️ **Boas-vindas por e-mail** | E-mail transacional após cadastro local ou Google, enviado pelo Resend |
+| 🔗 **Compartilhar perfil** | Link direto do perfil público do prestador para enviar aos clientes |
 | 🔔 **Lembretes** | Aviso no site + notificação do navegador quando faltar pouco pro horário |
 | 🔐 **Login social** | Conta local (e-mail/senha com bcrypt) ou Google via OAuth |
 | 🌙 **Tema claro/escuro** | Segue o sistema, com alternância manual e sem flash ao carregar |
@@ -142,7 +144,7 @@ npm install --prefix Backend
 PORT=3000 node Backend/server.js
 ```
 
-Acesse **http://localhost:3000**. Crie um `.env` em `Backend/` com `DATABASE_URL` (PostgreSQL/Supabase) — as tabelas e índices são criados sozinhos na primeira execução.
+Acesse **http://localhost:3000**. Copie `Backend/.env.example` para `Backend/.env` e configure `DATABASE_URL` (PostgreSQL/Supabase) — as tabelas e índices são criados sozinhos na primeira execução.
 
 Login social local (opcional): acrescente no mesmo `.env` `GOOGLE_CLIENT_ID` e cadastre `http://localhost:3000` como origem/redirect no console do Google.
 
@@ -150,7 +152,9 @@ Login social local (opcional): acrescente no mesmo `.env` `GOOGLE_CLIENT_ID` e c
 
 ## ☁️ Deploy
 
-O `render.yaml` na raiz configura o Blueprint: a cada push na `main`, o Render reinstala e reinicia sozinho (~1 min). Variáveis de ambiente no dashboard: `DATABASE_URL` (obrigatória), `NODE_ENV=production`, `GOOGLE_CLIENT_ID`.
+O `render.yaml` na raiz configura o Blueprint: a cada push na `main`, o Render reinstala e reinicia sozinho (~1 min). Variáveis de ambiente no dashboard: `DATABASE_URL` (obrigatória), `NODE_ENV=production`, `GOOGLE_CLIENT_ID`, `RESEND_API_KEY` e `RESEND_FROM`.
+
+O Resend envia o e-mail de boas-vindas após o cadastro local. Crie uma API key no Resend, verifique o domínio remetente e configure `RESEND_API_KEY` e `RESEND_FROM` no Render (e no `.env` local). Sem essas duas variáveis, o cadastro continua funcionando e o envio é ignorado. `SAOPS_PUBLIC_URL` define o endereço usado no botão do e-mail.
 
 > ⚠️ Plano gratuito: o serviço dorme sem tráfego (~50s pra acordar). Os dados vivem no Supabase (PostgreSQL) e **não zeram mais** a cada deploy.
 

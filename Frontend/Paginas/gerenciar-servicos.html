@@ -40,22 +40,24 @@
     </nav>
   </header>
 
-  <main>
-
-    <section>
-      <h2>Meus serviços</h2>
-      <p id="status_servicos">Carregando...</p>
+  <main class="service-manager">
+    <section class="service-intro"><div><p class="auth-card-kicker">Catálogo do negócio</p><h2>Deixe seus serviços prontos para agendar.</h2><p>Adicione preços e duração para ajudar os clientes a escolher com confiança.</p></div><a class="btn-link" href="meu-negocio.html">Ver meu negócio</a></section>
+    <div class="service-columns"><section class="service-catalog">
+      <div class="service-section-heading"><div><p class="auth-card-kicker">Publicado no seu perfil</p><h2>Seus serviços</h2></div><span class="service-icon" aria-hidden="true">✦</span></div>
+      <p id="status_servicos" role="status">Carregando...</p>
       <ul id="lista_servicos"></ul>
     </section>
 
-    <section>
-      <h2 id="titulo_form_servico">Adicionar novo serviço</h2>
+    <section class="service-form-card">
+      <p class="auth-card-kicker">Detalhes do atendimento</p><h2 id="titulo_form_servico">Adicionar serviço</h2>
+      <p class="service-form-hint">Você pode editar essas informações a qualquer momento.</p>
       <form id="form_servico" action="#" method="post">
         <label for="txt_nome_servico">Nome do serviço</label>
         <input type="text" id="txt_nome_servico" name="nome" placeholder="Ex: Coloração" required maxlength="120">
 
         <label for="txt_desc_servico">Descrição (opcional)</label>
-        <textarea id="txt_desc_servico" name="descricao" rows="2" maxlength="500" placeholder="Ex: Com hidratação inclusa"></textarea>
+        <textarea id="txt_desc_servico" name="descricao" rows="2" maxlength="500" placeholder="Ex.: Inclui lavagem e finalização"></textarea>
+        <small class="campo-dica"><span id="contador_descricao">0</span>/500 caracteres</small>
 
         <label for="txt_duracao_servico">Duração (minutos)</label>
         <input type="number" id="txt_duracao_servico" name="duracao_min" placeholder="30" min="1" step="1">
@@ -66,7 +68,9 @@
         <button type="submit" id="btn_salvar_servico">Adicionar serviço</button>
         <button type="button" id="btn_cancelar_edicao" class="secundario" hidden>Cancelar edição</button>
       </form>
+      <aside class="service-live-preview" aria-live="polite"><span>PRÉVIA DO SERVIÇO</span><strong id="previa_nome">Nome do serviço</strong><p id="previa_descricao">Sua descrição aparecerá aqui.</p><div><span id="previa_duracao">Duração a definir</span><span id="previa_preco">Preço a combinar</span></div></aside>
     </section>
+    </div>
 
   </main>
 
@@ -85,10 +89,20 @@
   const campoDuracao = document.getElementById('txt_duracao_servico');
   const campoPreco = document.getElementById('txt_preco_servico');
   let editandoId = null;
+  const camposPreview = [campoNome, campoDesc, campoDuracao, campoPreco];
 
   const formatarPreco = (p) => (p === null || p === undefined || p === '')
     ? 'Preço a combinar'
     : 'R$ ' + Number(p).toFixed(2).replace('.', ',');
+
+  function atualizarPrevia() {
+    document.getElementById('previa_nome').textContent = campoNome.value.trim() || 'Nome do serviço';
+    document.getElementById('previa_descricao').textContent = campoDesc.value.trim() || 'Sua descrição aparecerá aqui.';
+    document.getElementById('previa_duracao').textContent = campoDuracao.value ? campoDuracao.value + ' min' : 'Duração a definir';
+    document.getElementById('previa_preco').textContent = campoPreco.value ? formatarPreco(campoPreco.value) : 'Preço a combinar';
+    document.getElementById('contador_descricao').textContent = campoDesc.value.length;
+  }
+  camposPreview.forEach((campo) => campo.addEventListener('input', atualizarPrevia));
 
   function renderizar(servicos) {
     lista.innerHTML = '';
@@ -121,6 +135,8 @@
         tituloForm.textContent = 'Editar serviço';
         btnSalvar.textContent = 'Salvar alterações';
         btnCancelarEd.hidden = false;
+        atualizarPrevia();
+        document.querySelector('.service-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
         campoNome.focus();
       };
       const btnDel = document.createElement('button');
@@ -159,6 +175,7 @@
     tituloForm.textContent = 'Adicionar novo serviço';
     btnSalvar.textContent = 'Adicionar serviço';
     btnCancelarEd.hidden = true;
+    atualizarPrevia();
   }
 
   btnCancelarEd.onclick = limparForm;

@@ -7,19 +7,19 @@
   <title>SAOPS - Meu negócio</title><link rel="stylesheet" href="../CSS/style.css"><link rel="icon" type="image/png" href="../img/favicon.png">
   <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
 </head>
-<body>
+<body class="business-page">
   <header><a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a><h1>Meu negócio</h1>
     <nav class="topnav"><a href="painel-prestador.html">Painel</a><a href="agenda-prestador.html">Agenda</a><a href="busca.html">Buscar</a><a href="meu-negocio.html" aria-current="page">Meu negócio</a></nav>
   </header>
-  <main>
-    <section><h2>Perfil público</h2><p id="status_negocio" role="status"></p>
-      <form id="form_negocio"><label for="nome_negocio">Nome do negócio</label><input id="nome_negocio" maxlength="120" required>
+  <main class="business-dashboard">
+    <section class="business-profile-card"><div class="business-heading"><div><p class="auth-card-kicker">Como os clientes veem você</p><h2>Perfil do negócio</h2></div><button type="button" id="compartilhar_negocio" class="secundario">↗ Compartilhar perfil</button></div><p class="business-help">Mantenha seus dados atualizados para os clientes encontrarem você.</p><p id="status_negocio" role="status"></p>
+      <form id="form_negocio" class="business-profile-form"><label for="nome_negocio">Nome do negócio</label><input id="nome_negocio" maxlength="120" autocomplete="organization" required>
         <label for="categoria_negocio">Categoria</label><select id="categoria_negocio"><option value="">Selecione</option><option value="barbearia">Barbearia</option><option value="salao">Salão de beleza</option><option value="clinica">Clínica</option><option value="outro">Outro</option></select>
-        <label for="endereco_negocio">Endereço</label><input id="endereco_negocio" maxlength="200" placeholder="Rua, número, bairro">
+        <label for="endereco_negocio">Endereço</label><input id="endereco_negocio" maxlength="200" autocomplete="street-address" placeholder="Rua, número, bairro">
         <button type="submit">Salvar perfil</button></form>
     </section>
-    <section><h2>Serviços</h2><p id="status_servicos" role="status">Carregando...</p><ul id="lista_servicos"></ul></section>
-    <section><h2 id="titulo_servico">Adicionar serviço</h2><form id="form_servico">
+    <section class="business-services-card"><div class="business-heading"><div><p class="auth-card-kicker">O que você oferece</p><h2>Seus serviços</h2></div><span class="service-icon" aria-hidden="true">✦</span></div><p id="status_servicos" role="status">Carregando...</p><ul id="lista_servicos"></ul></section>
+    <section class="business-service-form"><p class="auth-card-kicker">Monte seu catálogo</p><h2 id="titulo_servico">Adicionar serviço</h2><p class="business-help">Inclua nome, duração e preço para facilitar o agendamento.</p><form id="form_servico">
       <label for="servico_nome">Nome</label><input id="servico_nome" maxlength="120" required>
       <label for="servico_descricao">Descrição</label><textarea id="servico_descricao" maxlength="500" rows="2"></textarea>
       <label for="servico_duracao">Duração (minutos)</label><input id="servico_duracao" type="number" min="1" step="1">
@@ -30,6 +30,7 @@
   <script src="../js/toast.js"></script><script src="../js/ui.js"></script><script src="../js/api.js"></script>
   <script>
     let editando = null;
+    let negocioId = null;
     const q = (id) => document.getElementById(id);
     const formServico = q('form_servico');
     function informar(id, texto) { q(id).textContent = texto; }
@@ -62,9 +63,21 @@
       if (!(await exigirLogin('login-empresa.html'))) return;
       const atual = await usuarioAtual();
       if (!atual.sucesso || atual.usuario.tipo !== 'empresa') { window.location.replace('painel-prestador.html'); return; }
-      const u = atual.usuario; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || '';
+      const u = atual.usuario; negocioId = u.id; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || '';
       carregarServicos();
     }
+    q('compartilhar_negocio').addEventListener('click', async () => {
+      if (!negocioId) return;
+      const origem = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'https://saops-zjyx.onrender.com' : location.origin;
+      const url = `${origem}/detalhes-prestador.html?id=${encodeURIComponent(negocioId)}`;
+      const titulo = q('nome_negocio').value.trim() || 'Meu negócio';
+      try {
+        if (navigator.share) await navigator.share({ title: titulo, text: 'Conheça meus serviços no SAOPS', url });
+        else { await navigator.clipboard.writeText(url); toast('Link do perfil copiado!', 'sucesso'); }
+      } catch (erro) {
+        if (erro.name !== 'AbortError') { try { await navigator.clipboard.writeText(url); toast('Link do perfil copiado!', 'sucesso'); } catch (_) { window.prompt('Copie o link do seu perfil:', url); } }
+      }
+    });
     q('form_negocio').addEventListener('submit', async (e) => { e.preventDefault(); const out = await chamarAuth('negocio', { metodo: 'PUT', dados: { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim() } }); informar('status_negocio', out.sucesso ? 'Perfil atualizado.' : (out.erro || 'Não foi possível salvar.')); });
     formServico.addEventListener('submit', async (e) => { e.preventDefault(); const dados = { nome: q('servico_nome').value.trim(), descricao: q('servico_descricao').value.trim(), duracao_min: q('servico_duracao').value || null, preco: q('servico_preco').value || null }; const out = editando ? await atualizarServico(editando, dados) : await criarServico(dados); if (!out.sucesso) { toast(out.erro || 'Não foi possível salvar.', 'erro'); return; } preencherServico(null); carregarServicos(); });
     q('cancelar_edicao').onclick = () => preencherServico(null);
