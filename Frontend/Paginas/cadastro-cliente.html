@@ -44,7 +44,7 @@
     <section class="signup-intro"><p class="signup-eyebrow">SAOPS · sua agenda</p><h2>Agende com mais tranquilidade.</h2><p>Crie sua conta para descobrir profissionais, marcar horários e acompanhar seus compromissos.</p><div class="signup-points"><span>✓ Perfil em poucos passos</span><span>✓ Seus horários em um só lugar</span></div></section>
     <section class="signup-card"><p class="auth-card-kicker">Conta de cliente</p><h2>Comece por aqui</h2><p class="auth-card-copy">Preencha seus dados para criar sua conta gratuita.</p>
     <p id="erro_cadastro" class="erro-msg" role="alert" hidden></p>
-    <div class="signup-steps" aria-label="Etapas do cadastro"><span data-etapa-status="1" class="atual"><b>1</b><i>Seus dados</i></span><span data-etapa-status="2"><b>2</b><i>Sua senha</i></span><span data-etapa-status="3"><b>3</b><i>Confirmação</i></span></div>
+    <div class="signup-steps" aria-label="Etapas do cadastro"><span data-etapa-status="1" class="atual"><b>1</b><i>Seus dados</i></span><span data-etapa-status="2"><b>2</b><i>Sua senha</i></span></div>
     <form id="form_cadastro_cliente" action="busca.html" method="get">
       <div data-etapa="1">
       <label for="txt_nome_cadastro_cliente">Nome completo</label>
@@ -69,8 +69,6 @@
       <div class="signup-actions"><button type="button" class="secundario" data-voltar>Voltar</button><button type="submit" id="btn_criar_conta_cliente">Criar conta</button></div>
       </div>
     </form>
-    <section id="painel_verificacao" class="verify-panel" hidden><span class="verify-icon" aria-hidden="true">✉</span><p class="auth-card-kicker">Última etapa</p><h2 id="titulo_verificacao">Confirme seu e-mail</h2><p id="texto_verificacao" class="auth-card-copy">Enviamos um código de 6 dígitos para <strong id="email_verificacao"></strong>.</p><form id="form_verificar_email"><label for="codigo_verificacao">Código de verificação</label><input id="codigo_verificacao" class="verify-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required><p id="erro_verificacao" role="alert" class="erro-msg" hidden></p><button type="submit" id="btn_verificar_email">Confirmar e entrar</button></form><p class="resend-copy">Não recebeu? <button type="button" id="btn_reenviar_codigo" class="resend-button">Reenviar código</button></p></section>
-
     <p class="signup-switch">Já tem conta? <a href="login-cliente.html">Entrar</a></p></section>
   </main>
 

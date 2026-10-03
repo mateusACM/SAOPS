@@ -13,9 +13,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: RESEND_API_KEY
-        sync: false
-      - key: RESEND_FROM
-        value: SAOPS <onboarding@resend.dev>
       - key: SAOPS_PUBLIC_URL
         value: https://saops-zjyx.onrender.com
