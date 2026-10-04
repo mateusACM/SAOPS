@@ -6,6 +6,28 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.0] - 2026-10-04
+
+### Adicionado
+- **Tela "Meu negócio"** (`/meu-negocio`, só prestador): perfil público (nome, categoria, endereço, apresentação, anos de experiência, Instagram), **horários de atendimento por dia** (expediente salvo em `disponibilidade`) e CRUD de serviços na mesma página — linkada no painel e na agenda
+- `PUT /api/auth/negocio` 🔒 (só `tipo=empresa`) + campos novos em `usuarios`: `bio`, `anos_experiencia`, `instagram`, `disponibilidade` (JSONB, padrão seg–sex 09:00–17:00, intervalo 30 min)
+- `GET /api/prestadores` público — vitrine de prestadores com perfil + serviços reais; a busca deixou o catálogo mock (`prestadores.js`)
+- **Validações de agendamento por prestador**: `prestador_id` obrigatório, serviço precisa pertencer ao prestador, dia ativo e horário dentro do expediente, conflito calculado pela **duração** do serviço (`409`)
+- Página `detalhes-prestador` (perfil público do prestador, `index, follow`) com botão "Compartilhar perfil" no Meu negócio
+
+### Alterado
+- **Login Microsoft removido** — restam e-mail/senha e Google; saíram `verificarMicrosoft`/JWKS/RS256, o botão das telas de login e a página `auth-callback.html`
+- `GET /agendamentos` virou privado (dono: cliente = `usuario_id`, empresa = `prestador_id`) e `GET/PUT/DELETE /:id` só respondem para o dono
+- **Tarefas movidas para `/api/tarefas`** com dono por usuário (`usuario_id`): cada conta só enxerga/atualiza/apaga as próprias (`401` sem sessão)
+- Cadastro de empresa **exige** `categoria` (`barbearia|salao|clinica|outro`) e `endereco`; senha mínima alinhada em 8 caracteres no frontend e no backend; rótulo do login da empresa agora diz "E-mail ou nome do negócio"
+- **Domínio oficial adotado: `https://saops-zjyx.onrender.com`** (101 referências em 26 arquivos; sitemap/robots/canonical/JSON-LD no domínio novo)
+
+### Segurança
+- **`Backend/env` (credencial do banco) apagado do repositório** e incluído no `.gitignore`; a credencial continua exposta no histórico antigo — trocar a senha do Supabase é recomendado
+
+### Removido
+- Verificação de e-mail por Resend (entrou e saiu nesta mesma janela)
+
 ## [1.3.0] - 2026-10-03
 
 ### Adicionado

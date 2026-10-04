@@ -42,6 +42,7 @@ Deve aparecer (entre outras):
 **URL:** `http://localhost:3000/agendamentos` (sessão obrigatória)
 
 > Sem sessão (cookie `saops_token`) → `401 { "erro": "Login necessário." }`.
+> Com `tipo: "empresa"`, o cadastro **exige** `categoria` (`barbearia` | `salao` | `clinica` | `outro`) e `endereco`.
 
 **Content-Type:** `application/json`
 
@@ -52,9 +53,12 @@ Deve aparecer (entre outras):
   "servico": "Corte de Cabelo",
   "data": "2024-04-20",
   "horario": "14:00",
-  "telefone": "(11) 98765-4321"
+  "telefone": "(11) 98765-4321",
+  "prestador_id": 7
 }
 ```
+
+> `prestador_id` é obrigatório (usuário `tipo=empresa`) e `servico` deve ser um serviço cadastrado **por aquele prestador**. A API ainda valida: dia ativo no expediente do prestador, horário dentro do expediente e alinhado ao intervalo (padrão 30 min) — ver "Validações" abaixo.
 
 **Resposta Sucesso (Status 201):**
 ```json
@@ -80,9 +84,11 @@ Deve aparecer (entre outras):
 **Resposta Erro (Status 409 — horário ocupado):**
 ```json
 {
-  "erro": "Já existe um agendamento para 2024-04-20 às 14:00. Escolha outro horário."
+  "erro": "Esse horário conflita com outro atendimento em 2024-04-20. Escolha outro horário."
 }
 ```
+
+> O conflito é calculado pela **duração do serviço** (não só minuto exato) e vale para o mesmo prestador, ignorando agendamentos cancelados.
 
 ---
 
@@ -281,12 +287,13 @@ Sessão em cookie `saops_token` (`HttpOnly`, 7 dias). Como o frontend é servido
 
 | Método | Rota | Body | Resposta |
 |---|---|---|---|
-| POST | `/api/auth/cadastro` | `{nome, email, senha(8–72), telefone?, tipo?}` | `200 + {sucesso, usuario}` / `400` / `409` e-mail em uso |
+| POST | `/api/auth/cadastro` | `{nome, email, senha(8–72), telefone?, tipo?, categoria?, endereco?}` | `200 + {sucesso, usuario}` / `400` / `409` e-mail em uso |
 | POST | `/api/auth/login` | `{email, senha}` (empresa aceita nome do negócio) | `200` / `401` |
 | POST | `/api/auth/oauth` | `{provider: 'google', credential}` | `200` / `401` (`id_token` validado) |
 | POST | `/api/auth/logout` | — | `200` |
 | GET | `/api/auth/eu` | — | `200 + usuario` / `401` |
 | GET | `/api/auth/config` | — | `{googleClientId}` |
+| PUT | `/api/auth/negocio` 🔒 | `{nome, categoria?, endereco?, bio?, anos_experiencia?, instagram?, disponibilidade?}` | `200 + {usuario}` / `403` se não for empresa |
 
 Padrão do frontend (`ui.js`): `exigirLogin('login-cliente.html')` guarda `saops_voltar` e redireciona; após entrar, `voltarAposLogin(padrão)` devolve. As funções de escrita de `api.js` retornam `naoAutenticado: true` no `401`.
 
@@ -318,6 +325,36 @@ Categorias: `pessoal casa trabalho estudos saude outro`.
 
 ---
 
+##  PRESTADORES (`/api/prestadores`)
+
+**Método:** `GET` — público (sem login). É a base da página de busca e do fluxo de agendamento: devolve cada prestador com o perfil e a lista de serviços dele.
+
+**URL:** `http://localhost:3000/api/prestadores`
+
+**Resposta (Status 200):**
+```json
+{
+  "total": 1,
+  "prestadores": [
+    {
+      "id": 7,
+      "nome": "Barbearia Central",
+      "categoria": "barbearia",
+      "endereco": "Rua A, 123",
+      "bio": "Cortes clássicos e modernos.",
+      "anos_experiencia": 5,
+      "instagram": "barbearia.central",
+      "disponibilidade": { "intervalo_min": 30, "seg": { "ativo": true, "inicio": "09:00", "fim": "17:00" } },
+      "servicos": [
+        { "id": 12, "nome": "Corte de Cabelo", "descricao": null, "preco": 45, "duracao_min": 30 }
+      ]
+    }
+  ]
+}
+```
+
+---
+
 ##  VALIDAÇÕES QUE A API FAZ
 
 ### 1. Data Não Pode ser no Passado
@@ -341,7 +378,7 @@ Resposta:
 
 ---
 
-### 2. Não Pode Ter Horários Duplicados
+### 2. Não Pode Ter Horários Duplicados (conflito por prestador)
 
 ```
 POST /agendamentos
@@ -364,11 +401,18 @@ Resposta: Sucesso! ID: 1
   "horario": "14:00"
 }
 
-Resposta:
+Resposta (409):
 {
-  "erro": "Já existe um agendamento para 2024-04-20 às 14:00. Escolha outro horário."
+  "erro": "Esse horário conflita com outro atendimento em 2024-04-20. Escolha outro horário."
 }
 ```
+
+Também dão `400` (antes do conflito):
+- `prestador_id` ausente/inválido → "Escolha um prestador válido."
+- prestador não existe → `404` "Prestador não encontrado."
+- serviço não é dele → "Escolha um serviço deste prestador."
+- dia desativado no expediente → "O prestador não atende nesse dia."
+- fora do expediente/intervalo → "Escolha um horário dentro do expediente do prestador."
 
 ---
 

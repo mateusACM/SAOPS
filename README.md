@@ -90,7 +90,7 @@ SAOPS/
 │   └── package.json
 ├── Frontend/
 │   ├── Paginas/       # 19 páginas + robots.txt, sitemap.xml, llms.txt, manifest
-│   ├── js/            # api, ui, tema, lembretes, social, toast, prestadores
+│   ├── js/            # api, ui, tema, lembretes, social, toast, cadastro
 │   ├── CSS/           # Tema Google Agenda (variáveis + modo escuro)
 │   └── img/           # Logo, favicon, og:image e ícones PWA
 ├── README.md
