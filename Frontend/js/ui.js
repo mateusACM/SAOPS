@@ -32,10 +32,11 @@
   // Complementa nome/foto pela sessão do servidor (quando logado e
   // o localStorage está vazio). Roda após o carregamento, quando o
   // api.js (com API_URL) já está disponível.
+  // Atualiza avatares via sessão quando logado (usa credentials: 'include' para enviar cookie HttpOnly)
   window.addEventListener('load', async () => {
     if (typeof API_URL === 'undefined') return;
     try {
-      const r = await fetch(API_URL + '/api/auth/eu', { credentials: 'same-origin' });
+      const r = await fetch(API_URL + '/api/auth/eu', { credentials: 'include' });
       if (!r.ok) return;
       const d = await r.json();
       if (!d.sucesso || !d.usuario) return;

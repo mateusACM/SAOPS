@@ -25,7 +25,8 @@
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
 </head>
-<body class="auth-page">
+<!-- Página com layout próprio para prestador (acessibilidade/UX: separa fluxo do cliente) -->
+<body class="auth-page auth-page-negocio">
 
   <header>
     <a class="brand" href="index.html"><img class="logo-header" src="../img/logo.png" alt=""> SAOPS</a>
@@ -40,18 +41,24 @@
     </nav>
   </header>
 
-  <main class="auth-layout auth-layout-business">
-    <section class="auth-intro" aria-labelledby="auth_intro_titulo">
-      <div class="auth-emblema"><img src="../img/logo.png" alt=""></div>
-      <p class="auth-eyebrow">Seu negócio em movimento</p>
-      <h2 id="auth_intro_titulo">Sua agenda trabalha com você.</h2>
-      <p>Cuide dos seus serviços, acompanhe os horários e mantenha tudo organizado em um só lugar.</p>
-      <div class="auth-benefits"><span>◷ &nbsp;Agenda centralizada</span><span>✦ &nbsp;Seu negócio em destaque</span></div>
+  <!-- Layout centralizado para área do negócio (evita coluna dupla; destaca proposta ao prestador) -->
+  <main class="negocio-layout">
+    <!-- Faixa de destaque da área do negócio (layout próprio do prestador) -->
+    <section class="negocio-hero" aria-labelledby="negocio_hero_titulo">
+      <div class="negocio-hero-emblema"><img src="../img/logo.png" alt=""></div>
+      <p class="negocio-hero-eyebrow">Área do negócio</p>
+      <h2 id="negocio_hero_titulo">Sua agenda trabalha com você.</h2>
+      <p class="negocio-hero-copy">Cuide dos seus serviços, acompanhe os horários e mantenha tudo organizado em um só lugar.</p>
+      <div class="negocio-hero-beneficios">
+        <span>◷ &nbsp;Agenda centralizada</span>
+        <span>✦ &nbsp;Seu negócio em destaque</span>
+      </div>
     </section>
-    <section class="auth-card" aria-labelledby="auth_card_titulo">
-      <p class="auth-card-kicker">Área do prestador</p>
+
+    <section class="negocio-card" aria-labelledby="auth_card_titulo">
+      <p class="negocio-kicker">Acesso do prestador</p>
       <h2 id="auth_card_titulo">Acesse seu negócio</h2>
-      <p class="auth-card-copy">Entre com seu e-mail ou o nome do negócio.</p>
+      <p class="negocio-copy">Entre com seu e-mail ou o nome do negócio.</p>
       <p id="erro_login" class="erro-msg" hidden></p>
       <form id="form_login_empresa" action="painel-prestador.html" method="get">
         <label for="txt_identificador_login_empresa">E-mail ou nome do negócio</label>
@@ -68,7 +75,11 @@
         <div id="google_btn"></div>
       </div>
 
-      <p class="auth-switch">Ainda não cadastrou? <a href="cadastro-empresa.html">Cadastre seu negócio</a></p>
+      <!-- Aparece só quando já existe sessão de prestador ativa (ver script abaixo)
+           UX: permite acesso direto ao painel sem digitar credenciais -->
+      <a class="negocio-painel-link" id="link_painel_prestador" href="painel-prestador.html" hidden>Ver painel do prestador &rarr;</a>
+
+      <p class="negocio-switch">Ainda não cadastrou? <a href="cadastro-empresa.html">Cadastre seu negócio</a></p>
     </section>
   </main>
 
@@ -101,6 +112,19 @@
   });
 
   iniciarLoginSocial({ destino: 'painel-prestador.html', tipo: 'empresa' });
+
+  // Atalho para o painel: só aparece quando já há sessão de prestador ativa
+  // UX: evita login desnecessário quando sessão ainda válida
+  (async () => {
+    const link = document.getElementById('link_painel_prestador');
+    if (!link) return;
+    try {
+      const r = await usuarioAtual();
+      if (!r || !r.sucesso || !r.usuario) return;
+      if (r.usuario.tipo !== 'empresa') return;
+      link.hidden = false;
+    } catch (e) { /* sem backend/offline: mantém oculto */ }
+  })();
 </script>
 
 <script src="../js/tema.js"></script>

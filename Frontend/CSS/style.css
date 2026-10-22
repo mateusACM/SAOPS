@@ -983,7 +983,6 @@ li.sk { display: block; }
   color: #fff;
   background: radial-gradient(ellipse at 90% 8%, rgba(255,255,255,.18), transparent 42%), linear-gradient(145deg, #4f4dc8, #7775ed 62%, #9695ff);
 }
-.auth-layout-business .auth-intro { background: radial-gradient(ellipse at 90% 8%, rgba(255,255,255,.17), transparent 42%), linear-gradient(145deg, #303b87, #5756d9 65%, #7775ed); }
 .auth-emblema { width: 60px; height: 60px; display: grid; place-items: center; margin-bottom: 34px; border-radius: 18px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); }
 .auth-emblema img { width: 38px; height: 38px; object-fit: contain; }
 .auth-eyebrow, .auth-card-kicker { margin: 0 0 9px; font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
@@ -1024,6 +1023,127 @@ html[data-tema="escuro"] .auth-card form button:not(.social-btn) { color: #17182
   .auth-layout { width: calc(100% - 20px); margin: 10px auto; }
   .auth-intro { padding: 24px 22px; }
   .auth-card { padding: 26px 21px; }
+}
+
+/* ---------- Acesso do prestador: área do negócio ----------
+   Layout próprio do login do prestador: faixa de destaque no topo
+   e card único centralizado (sem a coluna de intro do login do cliente).
+   Motivo: melhorar hierarquia visual e UX do fluxo "Sou prestador",
+   separando do layout dividido usado no login do cliente. */
+.auth-page-negocio {
+  background:
+    radial-gradient(ellipse at 50% -6%, rgba(48,59,135,.18), transparent 44rem),
+    var(--bg);
+}
+.negocio-layout {
+  width: min(1080px, calc(100% - 40px));
+  margin: 28px auto 44px;
+  display: grid;
+  justify-items: center;
+}
+.negocio-hero {
+  width: 100%;
+  padding: clamp(30px, 5vw, 56px) clamp(26px, 6vw, 72px) clamp(84px, 9vw, 122px);
+  border-radius: 28px;
+  text-align: center;
+  color: #fff;
+  background: radial-gradient(ellipse at 88% 0%, rgba(255,255,255,.16), transparent 42%), linear-gradient(135deg, #1c2150, #303b87 52%, #5756d9);
+  box-shadow: var(--shadow-lg);
+}
+.negocio-hero-emblema {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 26px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.26);
+}
+.negocio-hero-emblema img { width: 36px; height: 36px; object-fit: contain; }
+.negocio-hero-eyebrow {
+  margin: 0 0 10px;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.8);
+}
+.negocio-hero h2 {
+  max-width: 620px;
+  margin: 0 auto 14px;
+  font-size: clamp(1.9rem, 3.6vw, 2.9rem);
+  line-height: 1.1;
+  letter-spacing: -.035em;
+}
+.negocio-hero-copy { max-width: 560px; margin: 0 auto; color: rgba(255,255,255,.85); font-size: 1.03rem; }
+.negocio-hero-beneficios { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 28px; }
+.negocio-hero-beneficios span {
+  padding: 9px 14px;
+  border: 1px solid rgba(255,255,255,.26);
+  border-radius: 999px;
+  background: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.95);
+  font-size: .85rem;
+}
+.negocio-card {
+  position: relative;
+  width: min(560px, 100%);
+  margin-top: calc(-1 * clamp(56px, 7vw, 96px));
+  padding: clamp(26px, 4.5vw, 44px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+}
+.negocio-kicker {
+  margin: 0 0 9px;
+  color: var(--brand-text);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.negocio-card h2 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.1rem); line-height: 1.2; letter-spacing: -.03em; }
+.negocio-copy { margin: 9px 0 24px; color: var(--muted); }
+.negocio-card form { display: grid; gap: 8px; }
+.negocio-card form label { margin-top: 7px; font-size: .9rem; font-weight: 600; }
+.negocio-card form input { min-height: 48px; margin: 0 0 7px; border-radius: 11px; }
+.negocio-card form button { min-height: 48px; margin-top: 12px; border-radius: 11px; box-shadow: 0 8px 18px rgba(48,59,135,.24); }
+.negocio-card form button:disabled { opacity: .65; cursor: wait; }
+.negocio-card .social-login { margin-top: 22px; }
+.negocio-card .social-titulo { margin-bottom: 12px; }
+.negocio-card #google_btn { min-height: 42px; }
+html[data-tema="escuro"] .negocio-card form button:not(.social-btn) { color: #17182d; }
+/* Atalho para o painel (visível só com sessão de prestador ativa)
+   Acessibilidade/UX: oferece acesso rápido ao painel quando já logado,
+   evitando novo formulário. */
+.negocio-painel-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  margin-top: 18px;
+  padding: 10px 18px;
+  border: 1px solid var(--brand-line);
+  border-radius: 12px;
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.negocio-painel-link:hover { background: var(--fill-2); }
+/* Foco visível para navegação por teclado (acessibilidade) */
+.negocio-painel-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.negocio-painel-link[hidden] { display: none; }
+.negocio-switch { margin: 20px 0 0; color: var(--muted); text-align: center; font-size: .9rem; }
+.negocio-switch a { color: var(--link); font-weight: 700; text-decoration: none; }
+.negocio-switch a:hover { text-decoration: underline; }
+@media (max-width: 620px) {
+  .negocio-layout { width: calc(100% - 24px); margin: 16px auto 30px; }
+  .negocio-hero { padding: 26px 22px 78px; border-radius: 22px; }
+  .negocio-hero-emblema { margin-bottom: 18px; }
+  .negocio-card { padding: 26px 22px; }
 }
 
 /* ---------- Cadastro ---------- */
