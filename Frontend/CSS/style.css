@@ -44,6 +44,12 @@
   --brand-line: #dadafb;
   --danger-line: #f6c8c4;
   --shadow-sm: 0 1px 4px rgba(36,43,79,.06);
+  /* Ícone do toggle de senha no tema claro: cinza azulado #4a5169 sobre
+     input branco, contraste medido ≥7:1 (WCAG AAA). */
+  --senha-icon: #4a5169;
+  --senha-icon-hover: #4544bd;
+  --senha-icon-ativo: #3d3cb0;
+  --senha-focus-ring: rgba(87,86,217,.45);
 }
 
 /* ---------- Tema escuro ---------- */
@@ -80,6 +86,12 @@ html[data-tema="escuro"] {
   --shadow: 0 2px 8px rgba(0,0,0,.18);
   --shadow-lg: 0 14px 34px rgba(0,0,0,.28);
   --shadow-sm: 0 1px 4px rgba(0,0,0,.16);
+  /* Mesmo conjunto no tema escuro: ícone quase branco sobre input escuro,
+     mantendo a taxa de contraste ≥7:1 (WCAG AAA). */
+  --senha-icon: #f5f6fb;
+  --senha-icon-hover: #ffffff;
+  --senha-icon-ativo: #c4c3ff;
+  --senha-focus-ring: rgba(150,149,255,.85);
 }
 
 /* ---------- Botão de tema (claro/escuro) ---------- */
@@ -269,6 +281,66 @@ input:focus, select:focus, textarea:focus {
 input[type="radio"],
 input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--brand); }
 input[type="file"] { padding: 8px; background: var(--bg-soft, #f8faff); }
+
+/* ---------- Campo de senha com botão mostrar/ocultar ---------- */
+.senha-wrap {
+  position: relative;
+  display: block;
+  /* A margem vertical fica no wrapper, não no input, para o botão cobrir
+     exatamente a área do campo (alinha o ícone com os textos digitados). */
+  margin: 8px 0 5px;
+}
+.senha-wrap input[type="password"],
+.senha-wrap input[type="text"] {
+  padding-right: 44px;
+}
+.senha-wrap > input[type="password"],
+.senha-wrap > input[type="text"] {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+/* As duas formas do seletor (.senha-toggle e .senha-wrap .senha-toggle)
+   existem para subir a especificidade a (0,2,0) e vencer as regras dos
+   cards (ex.: .auth-card form button, .negocio-card form button), que
+   têm força igual/maior e pintariam o toggle como botão comum. */
+.senha-toggle,
+.senha-wrap .senha-toggle {
+  position: absolute;
+  top: 0;
+  right: 6px;
+  bottom: 0;
+  height: auto;
+  min-height: 0;
+  width: 36px;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--senha-icon);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  line-height: 1;
+  box-shadow: none;
+  cursor: pointer;
+  z-index: 2;
+}
+.senha-toggle svg { display: block; pointer-events: none; }
+.senha-toggle:hover:not(:disabled) {
+  background: transparent;
+  color: var(--senha-icon-hover);
+  box-shadow: none;
+}
+.senha-toggle:active:not(:disabled) { transform: none; }
+.senha-toggle:focus-visible {
+  outline: none;
+  color: var(--senha-icon-hover);
+  box-shadow: 0 0 0 3px var(--senha-focus-ring);
+}
+.senha-toggle.ativo,
+.senha-toggle[aria-pressed="true"] { color: var(--senha-icon-ativo); }
 
 /* ---------- Botões ---------- */
 button,
@@ -1006,7 +1078,10 @@ li.sk { display: block; }
 .auth-switch { margin: 23px 0 0; color: var(--muted); text-align: center; font-size: .9rem; }
 .auth-switch a { color: var(--link); font-weight: 700; text-decoration: none; }
 .auth-switch a:hover { text-decoration: underline; }
-html[data-tema="escuro"] .auth-card form button:not(.social-btn) { color: #17182d; }
+/* Texto escuro nos botões de submit (fundo claro no escuro). O toggle de senha
+   (.senha-toggle) é um <button> dentro do form e não deve herdar isso: ele é
+   pintado por var(--senha-icon). Por isso o :not(.senha-toggle). */
+html[data-tema="escuro"] .auth-card form button:not(.social-btn):not(.senha-toggle) { color: #17182d; }
 @media (max-width: 760px) {
   .auth-layout { width: min(520px, calc(100% - 28px)); min-height: auto; margin: 20px auto; grid-template-columns: 1fr; border-radius: 22px; }
   .auth-intro { padding: 28px 28px 30px; }
@@ -1114,7 +1189,8 @@ html[data-tema="escuro"] .auth-card form button:not(.social-btn) { color: #17182
 .negocio-card .social-login { margin-top: 22px; }
 .negocio-card .social-titulo { margin-bottom: 12px; }
 .negocio-card #google_btn { min-height: 42px; }
-html[data-tema="escuro"] .negocio-card form button:not(.social-btn) { color: #17182d; }
+/* Mesmo caso do .auth-card: exclui o toggle de senha (ver comentário acima). */
+html[data-tema="escuro"] .negocio-card form button:not(.social-btn):not(.senha-toggle) { color: #17182d; }
 /* Atalho para o painel (visível só com sessão de prestador ativa)
    Acessibilidade/UX: oferece acesso rápido ao painel quando já logado,
    evitando novo formulário. */

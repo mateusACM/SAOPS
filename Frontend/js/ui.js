@@ -168,3 +168,62 @@ function voltarAposLogin(padrao) {
   if (v && /^[a-z0-9-]+\.html(\?.*)?$/i.test(v)) return v;
   return padrao;
 }
+
+// ==========================================
+// Mostrar/ocultar senha (ícone de olho)
+// Injeta, em todo <input type="password"> da página, um botão dentro de um
+// wrapper (.senha-wrap) — o input é movido para dentro dele no boot, então
+// este init precisa rodar cedo (DOMContentLoaded) antes do usuário digitar.
+// Uso: initMostrarOcultarSenha()  (já roda automático no DOMContentLoaded)
+// ==========================================
+
+function initMostrarOcultarSenha(raiz = document) {
+  // SVG inline em vez de emoji (ex.: 👁): o emoji dependia de fonte de
+  // fallback do sistema e, em alguns SOs/plataformas, ficava invisível.
+  const ICONE_OLHO =
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>' +
+    '<circle cx="12" cy="12" r="3"></circle>' +
+    '</svg>';
+  const ICONE_OLHO_CORTADO =
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>' +
+    '<path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>' +
+    '<line x1="1" y1="1" x2="23" y2="23"></line>' +
+    '</svg>';
+
+  raiz.querySelectorAll('input[type="password"]').forEach((campo) => {
+    // Evita aplicar duas vezes no mesmo campo
+    if (campo.dataset.senhaToggle === '1') return;
+    campo.dataset.senhaToggle = '1';
+
+    const wrap = document.createElement('span');
+    wrap.className = 'senha-wrap';
+    campo.parentNode.insertBefore(wrap, campo);
+    wrap.appendChild(campo);
+
+    const botao = document.createElement('button');
+    botao.type = 'button'; // não dispara submit caso o form seja enviado com Enter
+    botao.className = 'senha-toggle';
+    // aria-label + aria-pressed: leitores de tela anunciam a ação do botão
+    // e o seu estado (pressionado = senha visível) — acessibilidade WCAG.
+    botao.setAttribute('aria-label', 'Mostrar senha');
+    botao.setAttribute('aria-pressed', 'false');
+    botao.title = 'Mostrar senha';
+    botao.innerHTML = ICONE_OLHO;
+    wrap.appendChild(botao);
+
+    botao.addEventListener('click', () => {
+      const mostrar = campo.type === 'password';
+      campo.type = mostrar ? 'text' : 'password';
+      botao.setAttribute('aria-pressed', mostrar ? 'true' : 'false');
+      botao.setAttribute('aria-label', mostrar ? 'Ocultar senha' : 'Mostrar senha');
+      botao.title = mostrar ? 'Ocultar senha' : 'Mostrar senha';
+      botao.innerHTML = mostrar ? ICONE_OLHO_CORTADO : ICONE_OLHO;
+      botao.classList.toggle('ativo', mostrar);
+    });
+  });
+}
+
+// Roda sozinho após o HTML carregar (sem depender da ordem dos <script>).
+document.addEventListener('DOMContentLoaded', () => initMostrarOcultarSenha());
