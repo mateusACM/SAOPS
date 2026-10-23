@@ -5,7 +5,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const { q, qGet, qAll, AGORA_SQL } = require('./database');
+const { q, qGet, qAll, AGORA_SQL, formatoUTC } = require('./database');
 
 const router = express.Router();
 
@@ -66,7 +66,9 @@ function lerCookies(req) {
 async function criarSessao(req, res, usuario) {
     try {
         const token = crypto.randomBytes(32).toString('hex');
-        const expira = new Date(Date.now() + SESSAO_MS).toISOString();
+        // Grava no MESMO formato do AGORA_SQL (UTC 'YYYY-MM-DD HH24:MI:SS') para
+        // que a comparação de expiração no banco funcione ao minuto (e não só no dia)
+        const expira = formatoUTC(new Date(Date.now() + SESSAO_MS));
         await q('INSERT INTO sessoes (token, usuario_id, expira_em) VALUES ($1, $2, $3)', [token, usuario.id, expira]);
         res.cookie(COOKIE, token, {
             httpOnly: true,

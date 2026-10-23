@@ -35,8 +35,25 @@ const PORT = process.env.PORT || 3000; // Porta onde o servidor vai rodar
 // Confia no proxy do Render (para req.secure / cookies secure)
 app.set('trust proxy', 1);
 
-// Libera CORS para o frontend (Live Server, file://, outras portas)
-app.use(cors());
+// CORS restrito a origens conhecidas. Com credenciais (cookies de sessão) o
+// navegador exige origem exata — por isso NÃO usamos 'origin: *'.
+// SAOPS_PUBLIC_URL (produção/Render) + origens de desenvolvimento (Live Server, :3000).
+const ORIGENS_PERMITIDAS = [
+    process.env.SAOPS_PUBLIC_URL,
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+].filter(Boolean).map((o) => String(o).replace(/\/+$/, '')); // remove barra final
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Sem Origin (mesma origem, curl, health check do Render) → libera
+        if (!origin || ORIGENS_PERMITIDAS.includes(origin)) return callback(null, true);
+        return callback(null, false);
+    },
+    credentials: true
+}));
 
 // Configura o Express para entender JSON
 app.use(bodyParser.json());
@@ -66,10 +83,24 @@ function validarData(data) {
     return date.getFullYear() === ano && date.getMonth() === mes - 1 && date.getDate() === dia;
 }
 
-// Converte YYYY-MM-DD em data local (evita o parse UTC que quebra o "hoje" no Brasil)
+// Converte YYYY-MM-DD em instante neutro (UTC meia-noite) — não depende da TZ do processo
 function parseDataLocal(data) {
     const [ano, mes, dia] = data.split('-').map(Number);
-    return new Date(ano, mes - 1, dia);
+    return new Date(Date.UTC(ano, mes - 1, dia));
+}
+
+// "Agora" no fuso America/Sao_Paulo, sem depender da TZ do processo (Render roda em UTC).
+// Devolve um Date cujos getters UTC refletem a hora de parede de Brasília.
+function agoraSaoPaulo() {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(new Date());
+    const p = {};
+    for (const { type, value } of partes) p[type] = value;
+    return new Date(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute), Number(p.second)));
 }
 
 // Valida formato de horário (HH:MM)
@@ -78,19 +109,18 @@ function validarHorario(horario) {
     return regex.test(horario);
 }
 
-// Valida se data+hora não estão no passado (fuso local do servidor)
+// Valida se data+hora não estão no passado — comparação no fuso de Brasília
 function validarDataHoraFutura(data, horario) {
     const [a, m, d] = data.split('-').map(Number);
     const [h, mi] = horario.split(':').map(Number);
-    return new Date(a, m - 1, d, h, mi) >= new Date();
+    return Date.UTC(a, m - 1, d, h, mi) >= agoraSaoPaulo().getTime();
 }
 
-// Valida se a data não é no passado (comparação em datas locais)
+// Valida se a data não é no passado (dia de hoje em Brasília conta como futuro)
 function validarDataFutura(data) {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // Zera as horas para comparar só a data
-
-    return parseDataLocal(data) >= hoje;
+    const agora = agoraSaoPaulo();
+    const hoje = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
+    return parseDataLocal(data).getTime() >= hoje;
 }
 
 // Valida telefone (mínimo 10 dígitos)
@@ -99,6 +129,32 @@ function validarTelefone(telefone) {
     
     const numeros = telefone.replace(/\D/g, ''); // Remove tudo que não é número
     return numeros.length >= 10 && numeros.length <= 11;
+}
+
+// Verifica sobreposição de horário do prestador considerando a duração dos serviços.
+// `duracao` = duração (min) do agendamento que está sendo gravado.
+// `ignorarId` exclui o próprio registro da checagem (usado no PUT/reagendamento).
+// Compartilhada entre POST e PUT para manter a MESMA regra de conflito.
+async function existeConflitoDeHorario({ prestadorId, data, horario, duracao, ignorarId = null }) {
+    const emMinutos = (hora) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5));
+    const inicio = emMinutos(horario);
+    const params = [prestadorId, data];
+    let filtroProprio = '';
+    if (ignorarId !== null && ignorarId !== undefined) {
+        params.push(ignorarId);
+        filtroProprio = ` AND a.id <> $${params.length}`;
+    }
+    const agendamentosDia = await qAll(
+        `SELECT a.horario, COALESCE(s.duracao_min, 30) AS duracao_min
+         FROM agendamentos a
+         LEFT JOIN servicos s ON s.usuario_id = a.prestador_id AND s.nome = a.servico
+         WHERE a.prestador_id = $1 AND a.data = $2 AND lower(COALESCE(a.status, 'agendado')) <> 'cancelado'${filtroProprio}`,
+        params
+    );
+    return agendamentosDia.some((a) => {
+        const inicioOcupado = emMinutos(a.horario);
+        return inicio < inicioOcupado + Number(a.duracao_min || 30) && inicioOcupado < inicio + Number(duracao || 30);
+    });
 }
 
 // ========================================
@@ -194,7 +250,8 @@ app.post('/agendamentos', exigirLogin, async (req, res) => {
         if (!prestador) return res.status(404).json({ erro: 'Prestador não encontrado.' });
         const servicoValido = await qGet('SELECT id, duracao_min FROM servicos WHERE usuario_id = $1 AND nome = $2', [prestadorId, String(servico).trim()]);
         if (!servicoValido) return res.status(400).json({ erro: 'Escolha um serviço deste prestador.' });
-        const diaSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][new Date(`${data}T12:00:00`).getDay()];
+        // Dia da semana calculado de forma determinística (UTC), sem depender da TZ do processo
+        const diaSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][parseDataLocal(data).getUTCDay()];
         const expediente = prestador.disponibilidade?.[diaSemana];
         if (!expediente?.ativo) return res.status(400).json({ erro: 'O prestador não atende nesse dia.' });
         const emMinutos = (hora) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5));
@@ -204,16 +261,7 @@ app.post('/agendamentos', exigirLogin, async (req, res) => {
         if (inicio < emMinutos(expediente.inicio) || inicio + duracao > emMinutos(expediente.fim) || (inicio - emMinutos(expediente.inicio)) % intervalo !== 0) {
             return res.status(400).json({ erro: 'Escolha um horário dentro do expediente do prestador.' });
         }
-        const agendamentosDia = await qAll(
-            `SELECT a.horario, COALESCE(s.duracao_min, 30) AS duracao_min
-             FROM agendamentos a LEFT JOIN servicos s ON s.usuario_id = a.prestador_id AND s.nome = a.servico
-             WHERE a.prestador_id = $1 AND a.data = $2 AND lower(COALESCE(a.status, 'agendado')) <> 'cancelado'`,
-            [prestadorId, data]
-        );
-        const conflito = agendamentosDia.some((a) => {
-            const inicioOcupado = emMinutos(a.horario);
-            return inicio < inicioOcupado + Number(a.duracao_min || 30) && inicioOcupado < inicio + duracao;
-        });
+        const conflito = await existeConflitoDeHorario({ prestadorId, data, horario, duracao });
         if (conflito) {
             return res.status(409).json({
                 erro: `Esse horário conflita com outro atendimento em ${data}. Escolha outro horário.`
@@ -452,12 +500,21 @@ app.put('/agendamentos/:id', exigirLogin, async (req, res) => {
             });
         }
 
-        // Verifica se já existe outro agendamento no mesmo horário (exceto o próprio)
+        // Verifica sobreposição de horário (mesma regra do POST), considerando a
+        // duração do serviço e ignorando o próprio registro
         if (mudouQuando) {
-            const conflito = await qGet(
-                'SELECT * FROM agendamentos WHERE prestador_id = $1 AND data = $2 AND horario = $3 AND id != $4',
-                [atual.prestador_id, data, horario, id]
+            const servicoAtual = await qGet(
+                'SELECT duracao_min FROM servicos WHERE usuario_id = $1 AND nome = $2',
+                [atual.prestador_id, String(servico).trim()]
             );
+            const duracao = Number(servicoAtual?.duracao_min || 30);
+            const conflito = await existeConflitoDeHorario({
+                prestadorId: atual.prestador_id,
+                data,
+                horario,
+                duracao,
+                ignorarId: Number(id)
+            });
             if (conflito) {
                 return res.status(409).json({
                     erro: `Já existe outro agendamento para ${data} às ${horario}`

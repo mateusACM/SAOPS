@@ -37,6 +37,14 @@ async function qAll(sql, params = []) {
 // "Agora" em UTC no mesmo formato do antigo datetime('now') do SQLite
 const AGORA_SQL = `to_char((now() at time zone 'utc'), 'YYYY-MM-DD HH24:MI:SS')`;
 
+// Formata uma data JS no MESMO formato do AGORA_SQL ('YYYY-MM-DD HH24:MI:SS' em UTC).
+// Usar o mesmo formato em expira_em garante comparação de strings correta no banco
+// (antes gravávamos ISO com 'T'/'Z', que no 10º caractere é maior que o espaço).
+function formatoUTC(data) {
+    const d = data instanceof Date ? data : new Date(data);
+    return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 const SCHEMA = [
     `CREATE TABLE IF NOT EXISTS agendamentos (
         id BIGSERIAL PRIMARY KEY,
@@ -109,7 +117,10 @@ const SCHEMA = [
     `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS instagram TEXT`,
     `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS disponibilidade JSONB NOT NULL DEFAULT '{"intervalo_min":30,"dom":{"ativo":false,"inicio":"09:00","fim":"17:00"},"seg":{"ativo":true,"inicio":"09:00","fim":"17:00"},"ter":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qua":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qui":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sex":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sab":{"ativo":false,"inicio":"09:00","fim":"17:00"}}'::jsonb`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes(expira_em)`,
-    `CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)`
+    `CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)`,
+    // Corrige sessões antigas gravadas em ISO (com 'T'/'Z') para o formato do AGORA_SQL.
+    // Idempotente: na segunda execução não há mais linhas com 'T'.
+    `UPDATE sessoes SET expira_em = replace(substr(expira_em, 1, 19), 'T', ' ') WHERE expira_em LIKE '%T%'`
 ];
 
 async function limparSessoes() {
@@ -136,4 +147,4 @@ async function iniciar() {
 
 iniciar();
 
-module.exports = { q, qGet, qAll, pool, AGORA_SQL };
+module.exports = { q, qGet, qAll, pool, AGORA_SQL, formatoUTC };
