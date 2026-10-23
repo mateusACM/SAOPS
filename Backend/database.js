@@ -5,6 +5,7 @@ const { Pool, types } = require('pg');
 // BIGINT (ids) volta como número nas respostas JSON, igual ao SQLite
 types.setTypeParser(20, (v) => parseInt(v, 10));
 
+// Obrigatória: sem banco não há sistema — falha rápido em vez de subir quebrado
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
     console.error(' Faltou DATABASE_URL (PostgreSQL/Supabase). Configure em Backend/.env (local) e no Render.');
@@ -125,6 +126,7 @@ const SCHEMA = [
 
 async function limparSessoes() {
     try {
+        // Comparação de string só funciona se expira_em estiver no MESMO formato UTC de AGORA_SQL
         await q(`DELETE FROM sessoes WHERE expira_em < ${AGORA_SQL}`);
     } catch (e) {
         console.error(' Erro ao limpar sessões expiradas:', e.message);

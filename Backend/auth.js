@@ -106,6 +106,8 @@ async function usuarioAtual(req) {
     const token = lerCookies(req)[COOKIE];
     if (!token) return null;
     try {
+        // AGORA_SQL usa o relógio do banco (UTC) no MESMO formato de expira_em,
+        // então sessão expirada é rejeitada mesmo se o servidor mudar de fuso
         const row = await qGet(
             `SELECT u.* FROM sessoes s
              JOIN usuarios u ON u.id = s.usuario_id
