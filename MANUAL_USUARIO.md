@@ -93,6 +93,13 @@ Este manual ensina a usar o **SAOPS** (https://saops-zjyx.onrender.com/): marcar
 - **Adicione** nome, descrição, preço e duração · **Edite** inline · **Remova** com confirmação
 - Só você mexe nos seus — serviço de outro dono nem aparece
 
+**Banner e foto do negócio (`Meu negócio` → `Imagem do negócio`):**
+- **Banner:** imagem larga e horizontal que aparece atrás do seu avatar no perfil público
+- **Foto:** aparece no avatar do seu perfil; o recorte quadrado é automático
+- A otimização da imagem é automática, feita no seu próprio navegador — não precisa editar nada antes
+- As mudanças entram no ar ao clicar em **Salvar perfil**
+- Pode remover à vontade: sem imagem, seu perfil público mostra suas **iniciais** normalmente
+
 ---
 
 ## 9. Tema claro/escuro

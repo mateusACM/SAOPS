@@ -197,6 +197,53 @@ a.brand:hover { text-decoration: none; opacity: .9; }
   text-transform: uppercase;
 }
 
+/* ---------- Menu de atalhos do prestador (só aparece por injeção via
+   ui.js quando a sessão confirma tipo 'empresa') ---------- */
+.nav-prestador { position: relative; }
+.nav-prestador-botao {
+  /* mesma tipografia dos links do topnav (um degrau acima) */
+  padding: 10px 18px;
+  border: 0;
+  background: transparent;
+  border-radius: 12px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.nav-prestador-botao:hover,
+.nav-prestador-botao[aria-expanded="true"] { background: var(--brand-soft); color: var(--brand-text); }
+.nav-prestador-botao:focus-visible,
+.nav-prestador-menu a:focus-visible { outline: 2px solid var(--senha-focus-ring); outline-offset: 2px; }
+.nav-prestador-caret { font-size: .72rem; transition: transform .15s ease; }
+.nav-prestador-botao[aria-expanded="true"] .nav-prestador-caret { transform: rotate(180deg); }
+.nav-prestador-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 184px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  z-index: 210;
+}
+.nav-prestador-menu a {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 9px;
+  color: var(--ink);
+  font-size: .95rem;
+}
+.nav-prestador-menu a:hover { background: var(--brand-soft); color: var(--brand-text); text-decoration: none; }
+.nav-prestador-menu a.nav-ativa { background: var(--brand-soft); color: var(--brand-text); font-weight: 600; }
+
 /* ---------- Layout ---------- */
 main {
   max-width: 1080px;
@@ -425,6 +472,16 @@ a { color: var(--link); }
   background: var(--bg);
 }
 .vazio .vazio-ico { font-size: 2rem; display: block; margin-bottom: 6px; }
+/* Bloco de sessão/rede: quando a área logada não carrega (401 ou servidor
+   fora do ar), mostra um convite para logar em vez da mensagem crua de erro.
+   Reaproveita o contêiner .vazio acima, usando as variáveis do tema. */
+.vazio-titulo { color: var(--ink); font-weight: 600; font-size: 1.05rem; margin: 0 0 4px; }
+.vazio-texto { color: var(--muted); margin: 0 auto 14px; max-width: 42ch; }
+.vazio-botao { min-width: 160px; }
+.vazio-botao:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
 
 /* ---------- Painel do prestador ---------- */
 .painel-cards {
@@ -545,6 +602,9 @@ a { color: var(--link); }
   background: var(--input-bg);
   box-shadow: var(--shadow);
 }
+/* Mensagem de sessão/rede exibida dentro do grid do calendário:
+   ocupa a linha inteira para não ficar espremida em uma célula de 7. */
+.cal-grid .vazio { grid-column: 1 / -1; }
 .cal-dow {
   padding: 9px 4px;
   text-align: center;
@@ -704,6 +764,36 @@ label.linha-toggle {
   flex-shrink: 0;
 }
 .foto-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+/* ---------- Banner do negócio no perfil (injetado via ui.js, só para
+   empresas com banner salvo) ---------- */
+/* Faixa no topo do card, atrás do avatar — mesma vibe do
+   .public-profile-banner, com degradê no tom do tema na base. */
+section.tem-banner-perfil {
+  --perfil-banner-h: clamp(110px, 20vw, 170px);
+  position: relative;
+  overflow: hidden;
+  /* desce o conteúdo o suficiente pro avatar morder a base da faixa */
+  padding-top: calc(var(--perfil-banner-h) - 44px);
+}
+.perfil-banner {
+  position: absolute;
+  top: -1px; /* cobre a borda do card */
+  left: -1px;
+  right: -1px;
+  height: var(--perfil-banner-h, 110px);
+  background: var(--brand-soft) center / cover no-repeat;
+  pointer-events: none;
+  z-index: 0;
+  animation: fadeUp .45s ease backwards;
+}
+.perfil-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 45%, color-mix(in srgb, var(--card) 92%, transparent));
+}
+section.tem-banner-perfil .perfil-topo { position: relative; z-index: 1; }
 
 /* ---------- Confirmação ---------- */
 .conf-card { text-align: center; padding: 34px 20px; }
@@ -1020,6 +1110,7 @@ li.sk { display: block; }
   header { padding: 10px 12px; gap: 6px; }
   .topnav { margin-left: 0; width: 100%; justify-content: flex-start; }
   .topnav a { padding: 6px 10px; font-size: .86rem; }
+  .nav-prestador-botao { padding: 8px 14px; font-size: .92rem; }
   main { margin: 14px auto; }
   .hero { padding: 26px 14px; }
   .hero h1 { font-size: 1.55rem; }
@@ -1391,4 +1482,39 @@ html[data-tema="escuro"] .negocio-card form button:not(.social-btn):not(.senha-t
   .public-service-card { align-items: flex-start; gap: 12px; padding: 15px; }
   .public-service-footer { gap: 6px; }
   .public-service-meta { font-size: .75rem; text-align: right; }
+}
+
+/* =====================================================
+   Imagens do negócio (banner + foto) — Meu negócio e
+   perfil público do prestador
+   ===================================================== */
+
+/* ---------- Seção de uploads no formulário do negócio ---------- */
+.upload-imagem { display: grid; gap: 8px; justify-items: start; padding: 14px; border: 1px dashed var(--line); border-radius: var(--radius-sm); background: var(--fill-3); }
+.upload-titulo { font-weight: 700; }
+.upload-ajuda { margin: 0; color: var(--muted); font-size: .85rem; }
+.upload-previa { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--fill-2); }
+.upload-previa.banner { width: 100%; max-width: 480px; aspect-ratio: 21 / 9; }
+.upload-previa.foto { width: 92px; aspect-ratio: 1; border-radius: 28px; }
+.upload-previa img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.upload-botoes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.upload-rotulo { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 14px; border: 1px solid var(--brand-line); border-radius: 11px; background: var(--card); color: var(--brand-text); font-weight: 700; cursor: pointer; }
+.upload-rotulo:hover { border-color: var(--brand); }
+/* O input fica invisível por cima do rótulo: continua focável por teclado. */
+.upload-rotulo input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.upload-rotulo:focus-within { outline: 2px solid var(--brand); outline-offset: 2px; }
+.upload-tamanho { margin: 0; color: var(--muted); font-size: .8rem; }
+
+/* ---------- Banner no hero do perfil público ---------- */
+/* Vaza até as bordas do card (compensa o padding do hero) e some com um
+   degradê na base, no tom do tema — funciona no claro e no escuro. */
+.public-profile-banner { grid-column: 1 / -1; position: relative; height: clamp(120px, 22vw, 220px); margin: calc(-1 * clamp(20px, 4vw, 34px)) calc(-1 * clamp(20px, 4vw, 34px)) 0; overflow: hidden; border-radius: 21px 21px 0 0; }
+.public-profile-banner img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.public-profile-banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--card) 85%, transparent)); }
+/* Foto real do avatar por cima do recorte arredondado existente. */
+.public-profile-avatar img { display: block; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+
+@media (max-width: 760px) {
+  .upload-previa.foto { width: 64px; border-radius: 20px; }
+  .public-profile-banner { height: clamp(110px, 26vw, 180px); }
 }

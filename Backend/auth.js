@@ -49,6 +49,20 @@ function validarTelefoneLocal(tel) {
     return numeros.length >= 10 && numeros.length <= 11;
 }
 
+// Banner/foto de perfil do prestador: data URL de imagem em base64
+// undefined mantém o valor atual, null limpa; string valida formato e tamanho (~450KB)
+const MIDIA_REGEX = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+const MIDIA_MAX_CHARS = 600000;
+
+function validarMidia(valor, campo) {
+    if (valor === undefined) return { manter: true };
+    if (valor === null) return { dados: null };
+    if (typeof valor !== 'string' || valor.length > MIDIA_MAX_CHARS || !MIDIA_REGEX.test(valor)) {
+        return { erro: `${campo} inválido — envie uma imagem (JPEG, PNG ou WEBP) em base64 de até 450KB.` };
+    }
+    return { dados: valor };
+}
+
 // ---------- helpers ----------
 
 function lerCookies(req) {
@@ -98,6 +112,8 @@ function publico(u) {
         bio: u.bio || null,
         anos_experiencia: u.anos_experiencia ?? null,
         instagram: u.instagram || null,
+        banner: u.banner || null,
+        foto_upload: u.foto_upload || null,
         disponibilidade: u.disponibilidade || DISPONIBILIDADE_PADRAO,
     };
 }
@@ -241,10 +257,17 @@ router.put('/negocio', exigirLogin, async (req, res) => {
         ? { sucesso: true, dados: req.usuario.disponibilidade || DISPONIBILIDADE_PADRAO }
         : normalizarDisponibilidade(req.body.disponibilidade);
     if (!horario.sucesso) return res.status(400).json({ sucesso: false, erro: horario.erro });
+    const bannerMidia = validarMidia(req.body?.banner, 'Banner');
+    const fotoMidia = validarMidia(req.body?.foto_upload, 'Foto de perfil');
+    if (bannerMidia.erro) return res.status(400).json({ sucesso: false, erro: bannerMidia.erro });
+    if (fotoMidia.erro) return res.status(400).json({ sucesso: false, erro: fotoMidia.erro });
+    // undefined mantém o valor atual; null limpa a coluna
+    const bannerFinal = bannerMidia.manter ? (req.usuario.banner ?? null) : bannerMidia.dados;
+    const fotoFinal = fotoMidia.manter ? (req.usuario.foto_upload ?? null) : fotoMidia.dados;
     try {
         const novo = await q(
-            'UPDATE usuarios SET nome = $1, categoria = $2, endereco = $3, bio = $4, anos_experiencia = $5, instagram = $6, disponibilidade = $7 WHERE id = $8 RETURNING *',
-            [nomeFinal, categoriaFinal, enderecoFinal, bioFinal || null, experienciaFinal, instagramFinal, horario.dados, req.usuario.id]
+            'UPDATE usuarios SET nome = $1, categoria = $2, endereco = $3, bio = $4, anos_experiencia = $5, instagram = $6, disponibilidade = $7, banner = $8, foto_upload = $9 WHERE id = $10 RETURNING *',
+            [nomeFinal, categoriaFinal, enderecoFinal, bioFinal || null, experienciaFinal, instagramFinal, horario.dados, bannerFinal, fotoFinal, req.usuario.id]
         );
         res.json({ sucesso: true, usuario: publico(novo.rows[0]) });
     } catch (e) {

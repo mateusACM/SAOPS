@@ -19,6 +19,8 @@
         <label for="bio_negocio" class="profile-wide-field">Sua apresentação</label><textarea id="bio_negocio" class="profile-wide-field" maxlength="800" rows="4" placeholder="Conte sua história, seu jeito de atender e o que faz seu trabalho especial."></textarea>
         <label for="experiencia_negocio">Anos de experiência</label><input id="experiencia_negocio" type="number" min="0" max="80" step="1" placeholder="Ex.: 5">
         <label for="instagram_negocio">Instagram</label><input id="instagram_negocio" maxlength="30" autocomplete="off" placeholder="seu.perfil">
+        <div class="profile-wide-field upload-imagem"><span class="upload-titulo">Banner do negócio</span><p class="upload-ajuda">Fica atrás do avatar no seu perfil público (proporção ~21:9). Use uma imagem larga e horizontal.</p><div id="banner_previa" class="upload-previa banner" hidden></div><div class="upload-botoes"><label class="upload-rotulo" for="banner_arquivo">Escolher imagem<input id="banner_arquivo" type="file" accept="image/*"></label><button type="button" id="remover_banner" class="mini perigo" hidden>Remover banner</button></div><p id="banner_tamanho" class="upload-tamanho" role="status"></p></div>
+        <div class="profile-wide-field upload-imagem"><span class="upload-titulo">Foto do negócio</span><p class="upload-ajuda">Aparece como avatar no perfil público, no lugar das iniciais. O recorte quadrado central é feito automaticamente.</p><div id="foto_previa" class="upload-previa foto" hidden></div><div class="upload-botoes"><label class="upload-rotulo" for="foto_arquivo">Escolher imagem<input id="foto_arquivo" type="file" accept="image/*"></label><button type="button" id="remover_foto" class="mini perigo" hidden>Remover foto</button></div><p id="foto_tamanho" class="upload-tamanho" role="status"></p></div>
         <button type="submit">Salvar perfil</button></form>
     </section>
     <section class="business-hours-card"><div class="business-heading"><div><p class="auth-card-kicker">Sua agenda</p><h2>Horários de atendimento</h2></div><span class="service-icon" aria-hidden="true">◷</span></div><p class="business-help">Marque os dias e defina quando seus clientes podem agendar.</p><p id="status_horarios" role="status"></p>
@@ -45,6 +47,12 @@
   <script>
     let editando = null;
     let negocioId = null;
+    // Estado das imagens do negócio: "atual" é o que já está salvo no servidor,
+    // "novo" é a pendência do usuário (undefined = não mexeu, null = remover).
+    const imagensNegocio = {
+      banner: { atual: null, novo: undefined },
+      foto: { atual: null, novo: undefined }
+    };
     const q = (id) => document.getElementById(id);
     const formServico = q('form_servico');
     const dias = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
@@ -67,8 +75,85 @@
         checkbox.onchange = alternar; alternar();
       });
     }
+    // ============================================================
+    // Seção "Imagem do negócio": upload com compressão no navegador
+    // ============================================================
+    function decodificarImagem(arquivo) {
+      if (window.createImageBitmap) return createImageBitmap(arquivo).catch(() => decodificarViaImagem(arquivo));
+      return decodificarViaImagem(arquivo);
+    }
+    function decodificarViaImagem(arquivo) {
+      return new Promise((resolver, rejeitar) => {
+        const urlImagem = URL.createObjectURL(arquivo);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(urlImagem); resolver(img); };
+        img.onerror = () => { URL.revokeObjectURL(urlImagem); rejeitar(new Error('imagem-invalida')); };
+        img.src = urlImagem;
+      });
+    }
+    // Recorta no centro para a proporção pedida, reduz para larguraMax e
+    // exporta JPEG via canvas (junto basta controlar o tamanho no navegador).
+    async function comprimirImagem(arquivo, { larguraMax, proporcao, qualidade }) {
+      const origem = await decodificarImagem(arquivo);
+      const larguraOrig = 'naturalWidth' in origem ? origem.naturalWidth : origem.width;
+      const alturaOrig = 'naturalHeight' in origem ? origem.naturalHeight : origem.height;
+      if (!larguraOrig || !alturaOrig) throw new Error('imagem-invalida');
+      let recorteW = larguraOrig, recorteH = alturaOrig, recorteX = 0, recorteY = 0;
+      if (larguraOrig / alturaOrig > proporcao) { recorteW = Math.round(alturaOrig * proporcao); recorteX = Math.round((larguraOrig - recorteW) / 2); }
+      else { recorteH = Math.round(larguraOrig / proporcao); recorteY = Math.round((alturaOrig - recorteH) / 2); }
+      const larguraFinal = Math.min(larguraMax, recorteW);
+      const alturaFinal = Math.round(larguraFinal / proporcao);
+      const canvas = document.createElement('canvas');
+      canvas.width = larguraFinal; canvas.height = alturaFinal;
+      canvas.getContext('2d').drawImage(origem, recorteX, recorteY, recorteW, recorteH, 0, 0, larguraFinal, alturaFinal);
+      return canvas.toDataURL('image/jpeg', qualidade);
+    }
+    // Mostra no preview o valor vigente: pendência do usuário (novo) ou, se não mexeu, o que já está salvo.
+    function atualizarPreviaImagem(tipo) {
+      const estado = imagensNegocio[tipo];
+      const valor = estado.novo !== undefined ? estado.novo : estado.atual;
+      const previa = q(`${tipo}_previa`);
+      previa.replaceChildren();
+      if (valor) { const img = document.createElement('img'); img.decoding = 'async'; img.alt = ''; img.src = valor; previa.append(img); }
+      previa.hidden = !valor;
+      const rotulo = q(`${tipo}_arquivo`).closest('.upload-rotulo');
+      if (rotulo) rotulo.firstChild.textContent = valor ? 'Trocar imagem' : 'Escolher imagem';
+      q(`remover_${tipo}`).hidden = !valor;
+      const tamanho = q(`${tipo}_tamanho`);
+      if (typeof estado.novo === 'string') tamanho.textContent = `Nova imagem pronta (~${Math.round(estado.novo.length * 0.75 / 1024)} KB, JPEG otimizado no navegador). Salve o perfil para aplicar.`;
+      else if (estado.novo === null && estado.atual) tamanho.textContent = 'Imagem marcada para remover. Salve o perfil para confirmar.';
+      else tamanho.textContent = '';
+    }
+    function dadosImagensNegocio() {
+      const dados = {};
+      if (imagensNegocio.banner.novo !== undefined) dados.banner = imagensNegocio.banner.novo;
+      if (imagensNegocio.foto.novo !== undefined) dados.foto_upload = imagensNegocio.foto.novo;
+      return dados;
+    }
+    function registrarImagensSalvas(usuario, dados) {
+      const u = usuario || {};
+      if ('banner' in dados || u.banner !== undefined) imagensNegocio.banner.atual = typeof u.banner === 'string' ? u.banner : u.banner === undefined ? imagensNegocio.banner.novo : null;
+      if ('foto_upload' in dados || u.foto_upload !== undefined) imagensNegocio.foto.atual = typeof u.foto_upload === 'string' ? u.foto_upload : u.foto_upload === undefined ? imagensNegocio.foto.novo : null;
+      imagensNegocio.banner.novo = undefined; imagensNegocio.foto.novo = undefined;
+      atualizarPreviaImagem('banner'); atualizarPreviaImagem('foto');
+    }
+    async function escolherImagem(tipo, arquivo) {
+      if (!arquivo) return;
+      if (!arquivo.type.startsWith('image/')) { toast('Escolha um arquivo de imagem.', 'erro'); return; }
+      const opcoes = tipo === 'banner' ? { larguraMax: 1200, proporcao: 21 / 9, qualidade: 0.72 } : { larguraMax: 512, proporcao: 1, qualidade: 0.8 };
+      try { imagensNegocio[tipo].novo = await comprimirImagem(arquivo, opcoes); }
+      catch (_) { toast('Não foi possível ler esta imagem.', 'erro'); }
+      atualizarPreviaImagem(tipo);
+    }
+    ['banner', 'foto'].forEach((tipo) => {
+      const input = q(`${tipo}_arquivo`);
+      input.addEventListener('change', () => { escolherImagem(tipo, input.files && input.files[0]).finally(() => { input.value = ''; }); });
+      q(`remover_${tipo}`).addEventListener('click', () => { imagensNegocio[tipo].novo = null; atualizarPreviaImagem(tipo); });
+    });
     async function salvarPerfil(mensagem) {
-      const out = await chamarAuth('negocio', { metodo: 'PUT', dados: { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim(), bio: q('bio_negocio').value.trim(), anos_experiencia: q('experiencia_negocio').value, instagram: q('instagram_negocio').value.trim(), disponibilidade: disponibilidadeAtual() } });
+      const dados = { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim(), bio: q('bio_negocio').value.trim(), anos_experiencia: q('experiencia_negocio').value, instagram: q('instagram_negocio').value.trim(), disponibilidade: disponibilidadeAtual(), ...dadosImagensNegocio() };
+      const out = await chamarAuth('negocio', { metodo: 'PUT', dados });
+      if (out.sucesso) registrarImagensSalvas(out.usuario, dados);
       informar('status_negocio', out.sucesso ? mensagem : (out.erro || 'Não foi possível salvar.'));
       informar('status_horarios', out.sucesso ? mensagem : (out.erro || 'Não foi possível salvar.'));
     }
@@ -102,6 +187,9 @@
       const atual = await usuarioAtual();
       if (!atual.sucesso || atual.usuario.tipo !== 'empresa') { window.location.replace('painel-prestador.html'); return; }
       const u = atual.usuario; negocioId = u.id; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || ''; q('bio_negocio').value = u.bio || ''; q('experiencia_negocio').value = u.anos_experiencia ?? ''; q('instagram_negocio').value = u.instagram || ''; preencherDisponibilidade(u.disponibilidade);
+      imagensNegocio.banner.atual = typeof u.banner === 'string' ? u.banner : null;
+      imagensNegocio.foto.atual = typeof u.foto_upload === 'string' ? u.foto_upload : null;
+      atualizarPreviaImagem('banner'); atualizarPreviaImagem('foto');
       carregarServicos();
     }
     q('compartilhar_negocio').addEventListener('click', async () => {

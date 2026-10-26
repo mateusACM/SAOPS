@@ -86,7 +86,17 @@
     const disponibilidade = p.disponibilidade || {};
 
     const hero = elemento('section', 'public-profile-hero');
-    const avatar = elemento('div', 'public-profile-avatar', p.nome.trim().split(/\s+/).slice(0, 2).map((parte) => parte[0]).join('').toUpperCase()); avatar.setAttribute('aria-hidden', 'true');
+    if (typeof p.banner === 'string' && p.banner.startsWith('data:image/')) {
+      const bannerNegocio = elemento('img', 'public-profile-banner');
+      bannerNegocio.alt = ''; bannerNegocio.decoding = 'async'; bannerNegocio.src = p.banner;
+      hero.append(bannerNegocio);
+    }
+    const avatar = elemento('div', 'public-profile-avatar'); avatar.setAttribute('aria-hidden', 'true');
+    const fotoPerfil = (typeof p.foto_upload === 'string' && p.foto_upload) || (typeof p.foto === 'string' ? p.foto : '');
+    if (fotoPerfil && /^(data:image\/|https?:\/\/)/.test(fotoPerfil)) {
+      const avatarFoto = elemento('img', ''); avatarFoto.alt = ''; avatarFoto.decoding = 'async'; avatarFoto.src = fotoPerfil;
+      avatar.append(avatarFoto);
+    } else avatar.textContent = p.nome.trim().split(/\s+/).slice(0, 2).map((parte) => parte[0]).join('').toUpperCase();
     const intro = elemento('div', 'public-profile-intro');
     intro.append(elemento('p', 'auth-card-kicker', 'CONHEÇA SEU PRÓXIMO PROFISSIONAL'), elemento('h2', '', p.nome));
     const tags = elemento('div', 'profile-tags'); tags.append(elemento('span', 'profile-tag', categoria));

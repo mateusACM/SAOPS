@@ -6,6 +6,31 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.2] - 2026-10-26
+
+### Adicionado
+- **Banner e foto real do prestador no perfil público** (`detalhes-prestador`): o hero ganhou banner com proporção ~21:9 (e scrim para o texto continuar legível) e o avatar passou a mostrar a foto de perfil — o fallback preserva a foto do Google OAuth (`foto`) e, por último, as iniciais
+- **Upload de imagem no Meu negócio** (`meu-negocio.html`): arquivo comprimido no navegador via canvas (banner 1200px JPEG 0.72, foto 512px JPEG 0.8) e gravado como data URL nas colunas novas `usuarios.banner` / `usuarios.foto_upload` pelo `PUT /api/auth/negocio` 🔒 — backend aceita só `data:image/jpeg|png|webp;base64` com até ~450KB, campo ausente mantém a imagem e `null` remove
+- **Vitrine expõe as imagens**: `GET /api/prestadores` agora devolve `banner` e `foto_upload` de cada prestador
+
+### Alterado
+- Limite do `bodyParser` subiu de 100KB para **2mb** — data URLs grandes dos uploads passam a chegar no JSON (`Backend/server.js`)
+
+## [1.4.1] - 2026-10-23
+
+### Corrigido
+- **Expiração de sessão valia "ao dia"**: `expira_em` era gravado em ISO com `T`/`Z`, mas comparado em texto com o formato do `AGORA_SQL` (`YYYY-MM-DD HH24:MI:SS`) — a comparação só acertava a data, não a hora. Novo helper `formatoUTC()` em `database.js` (exportado) usado em `criarSessao`, mais um `UPDATE` idempotente no array `SCHEMA` para corrigir sessões antigas com `T`
+- **"Hoje" quebrava no fuso do Brasil**: o Render roda em UTC e o `new Date(...)` do processo deslocava o dia corrente. Novas funções em `server.js`: `agoraSaoPaulo()` (via `Intl`), `parseDataLocal` reescrito para base UTC; `validarDataHoraFutura` e `validarDataFutura` comparam no fuso de Brasília (hoje conta como futuro) e o dia da semana do `POST /agendamentos` usa `parseDataLocal(data).getUTCDay()` determinístico
+- **Conflito no `PUT /agendamentos/:id`** checava horário exato; agora usa a função compartilhada `existeConflitoDeHorario()` (mesma regra de sobreposição por duração do `POST`), com `ignorarId` para excluir o próprio registro
+
+### Segurança
+- **CORS deixou de ser aberto** (`cors()`): virou whitelist (`ORIGENS_PERMITIDAS` = `SAOPS_PUBLIC_URL` + `localhost:5500`/`:3000`) com `credentials: true`; origem fora da lista recebe `callback(null, false)` (`Backend/server.js:38-56`)
+- `.gitignore`: corrigida a linha quebrada que fazia o `env` **não** ser ignorado
+
+### Adicionado
+- **Novo layout da `/login-empresa`**: bloco `negocio-hero` + `negocio-card` centralizado (`style.css`), link "Ver painel do prestador" que aparece só com sessão de empresa ativa, e `api.js`/`ui.js` passando a enviar `credentials: 'include'` nas chamadas de API (necessário para o cookie cruzar origem no dev)
+- **Botão mostrar/ocultar senha** (olhinho com SVG, `aria-pressed`/`aria-label`, `type="button"`) injetado em todo `<input type="password">` por `initMostrarOcultarSenha()` em `Frontend/js/ui.js`; variáveis `--senha-icon*` em `style.css` com contraste ≥ 7:1 nos temas claro e escuro, e seletores de botão do tema escuro ganharam `:not(.senha-toggle)`
+
 ## [1.4.0] - 2026-10-04
 
 ### Adicionado

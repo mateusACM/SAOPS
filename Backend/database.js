@@ -119,6 +119,9 @@ const SCHEMA = [
     `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS disponibilidade JSONB NOT NULL DEFAULT '{"intervalo_min":30,"dom":{"ativo":false,"inicio":"09:00","fim":"17:00"},"seg":{"ativo":true,"inicio":"09:00","fim":"17:00"},"ter":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qua":{"ativo":true,"inicio":"09:00","fim":"17:00"},"qui":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sex":{"ativo":true,"inicio":"09:00","fim":"17:00"},"sab":{"ativo":false,"inicio":"09:00","fim":"17:00"}}'::jsonb`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes(expira_em)`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)`,
+    // Banner e foto de perfil (data URL base64) do perfil público do prestador
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS banner TEXT`,
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS foto_upload TEXT`,
     // Corrige sessões antigas gravadas em ISO (com 'T'/'Z') para o formato do AGORA_SQL.
     // Idempotente: na segunda execução não há mais linhas com 'T'.
     `UPDATE sessoes SET expira_em = replace(substr(expira_em, 1, 19), 'T', ' ') WHERE expira_em LIKE '%T%'`

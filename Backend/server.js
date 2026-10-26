@@ -55,9 +55,9 @@ app.use(cors({
     credentials: true
 }));
 
-// Configura o Express para entender JSON
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Configura o Express para entender JSON (2mb: banner/foto do perfil chegam como data URL base64)
+app.use(bodyParser.json({ limit: '2mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '2mb' }));
 
 // Serve o frontend estático (Frontend/Paginas como raiz + /js e /CSS)
 app.use(express.static(path.join(__dirname, '..', 'Frontend', 'Paginas')));
@@ -171,14 +171,14 @@ app.get('/api/status', (req, res) => {
 app.get('/api/prestadores', async (req, res) => {
     try {
         const rows = await qAll(
-            `SELECT u.id, u.nome, u.categoria, u.endereco, u.bio, u.anos_experiencia, u.instagram, u.disponibilidade, s.id AS servico_id,
+            `SELECT u.id, u.nome, u.categoria, u.endereco, u.bio, u.anos_experiencia, u.instagram, u.disponibilidade, u.banner, u.foto_upload, s.id AS servico_id,
                     s.nome AS servico_nome, s.descricao, s.preco, s.duracao_min
              FROM usuarios u LEFT JOIN servicos s ON s.usuario_id = u.id
              WHERE u.tipo = 'empresa' ORDER BY u.nome, s.nome`
         );
         const porId = new Map();
         for (const row of rows) {
-            if (!porId.has(row.id)) porId.set(row.id, { id: row.id, nome: row.nome, categoria: row.categoria, endereco: row.endereco, bio: row.bio, anos_experiencia: row.anos_experiencia, instagram: row.instagram, disponibilidade: row.disponibilidade, servicos: [] });
+            if (!porId.has(row.id)) porId.set(row.id, { id: row.id, nome: row.nome, categoria: row.categoria, endereco: row.endereco, bio: row.bio, anos_experiencia: row.anos_experiencia, instagram: row.instagram, disponibilidade: row.disponibilidade, banner: row.banner || null, foto_upload: row.foto_upload || null, servicos: [] });
             if (row.servico_id !== null) porId.get(row.id).servicos.push({ id: row.servico_id, nome: row.servico_nome, descricao: row.descricao, preco: row.preco, duracao_min: row.duracao_min });
         }
         const prestadores = [...porId.values()];
