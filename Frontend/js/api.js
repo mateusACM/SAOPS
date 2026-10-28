@@ -65,11 +65,12 @@ async function listarAgendamentos() {
             return { sucesso: true, dados: data.agendamentos };
         } else {
             console.error('❌ Erro:', data.erro);
-            return { sucesso: false, erro: data.erro };
+            return { sucesso: false, erro: data.erro, naoAutenticado: response.status === 401 };
         }
     } catch (error) {
         console.error('Erro na requisição:', error);
-        return { sucesso: false, erro: error.message };
+        // semConexao: fetch não chegou ao servidor (rede fora/ backend parado)
+        return { sucesso: false, erro: error.message, semConexao: true };
     }
 }
 
@@ -209,10 +210,11 @@ async function listarTarefas(filtro = {}) {
         if (response.ok) {
             return { sucesso: true, dados: result.tarefas };
         } else {
-            return { sucesso: false, erro: result.erro };
+            return { sucesso: false, erro: result.erro, naoAutenticado: response.status === 401 };
         }
     } catch (error) {
-        return { sucesso: false, erro: error.message };
+        // semConexao: fetch não chegou ao servidor (rede fora/ backend parado)
+        return { sucesso: false, erro: error.message, semConexao: true };
     }
 }
 

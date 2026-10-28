@@ -50,6 +50,16 @@
   --senha-icon-hover: #4544bd;
   --senha-icon-ativo: #3d3cb0;
   --senha-focus-ring: rgba(87,86,217,.45);
+  /* Tokens "moderno premium" (home): acento secundário (teal), luzes da
+     aurora do hero, sombras em camadas (near/mid/far) e brilho do CTA. */
+  --accent: #0e9384;
+  --accent-soft: #d8f3ef;
+  --hero-glow-1: rgba(87,86,217,.32);
+  --hero-glow-2: rgba(128,86,199,.26);
+  --hero-glow-3: rgba(14,147,132,.20);
+  --shadow-layered: 0 1px 2px rgba(23,29,55,.07), 0 8px 24px rgba(36,43,79,.09), 0 24px 64px rgba(36,43,79,.11);
+  --cta-glow: 0 2px 8px rgba(87,86,217,.22), 0 10px 28px rgba(87,86,217,.30);
+  --cta-glow-hover: 0 2px 10px rgba(87,86,217,.32), 0 14px 36px rgba(87,86,217,.44);
 }
 
 /* ---------- Tema escuro ---------- */
@@ -92,6 +102,17 @@ html[data-tema="escuro"] {
   --senha-icon-hover: #ffffff;
   --senha-icon-ativo: #c4c3ff;
   --senha-focus-ring: rgba(150,149,255,.85);
+  /* Mesmo conjunto no tema escuro: glows mais suaves (sem preto chapado),
+     acento teal claro com contraste alto sobre o card escuro e sombras
+     mais profundas, seguindo o padrão das sombras existentes aqui. */
+  --accent: #4fd1c5;
+  --accent-soft: #12332f;
+  --hero-glow-1: rgba(150,149,255,.28);
+  --hero-glow-2: rgba(128,86,199,.22);
+  --hero-glow-3: rgba(79,209,197,.16);
+  --shadow-layered: 0 1px 2px rgba(0,0,0,.32), 0 8px 24px rgba(0,0,0,.28), 0 24px 64px rgba(0,0,0,.24);
+  --cta-glow: 0 2px 8px rgba(150,149,255,.20), 0 10px 28px rgba(150,149,255,.26);
+  --cta-glow-hover: 0 2px 10px rgba(150,149,255,.30), 0 14px 36px rgba(150,149,255,.38);
 }
 
 /* ---------- Botão de tema (claro/escuro) ---------- */
@@ -282,6 +303,119 @@ section h2:first-child { margin-top: 0; }
 .hero nav a { text-decoration: none; }
 .hero nav button { margin: 0; }
 
+/* ---------- Home "moderno premium" (aurora + glass) ---------- */
+/* Escopado em .hero--home: o .hero base continua servindo as seções
+   equivalentes de sobre-nos.html, sem regressão de visual lá. */
+.hero--home {
+  position: relative;
+  isolation: isolate;
+  /* Fallback sólido primeiro; a camada translúcida + backdrop-filter
+     só entram onde color-mix é suportado (vidro de verdade). */
+  background: var(--card);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--brand-soft) 42%, transparent), transparent 72%),
+    color-mix(in srgb, var(--card) 86%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-color: color-mix(in srgb, var(--brand) 16%, var(--line));
+  box-shadow: var(--shadow-layered);
+}
+/* Aurora: duas luzes comprimidas com blur (estilo Stripe/Linear). O ::after
+   carrega duas cores (roxo + acento teal) num único pseudo-elemento. */
+.hero--home::before,
+.hero--home::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(64px);
+}
+.hero--home::before {
+  width: min(58%, 640px);
+  aspect-ratio: 1;
+  top: -42%;
+  left: -14%;
+  background: radial-gradient(closest-side, var(--hero-glow-1), transparent 72%);
+}
+.hero--home::after {
+  width: min(64%, 720px);
+  aspect-ratio: 1;
+  bottom: -48%;
+  right: -16%;
+  background:
+    radial-gradient(closest-side at 38% 45%, var(--hero-glow-2), transparent 70%),
+    radial-gradient(closest-side at 78% 60%, var(--hero-glow-3), transparent 65%);
+}
+.hero--home .logo-hero.lockup {
+  border-radius: 20px;
+  /* Sombra em camadas + anel de 1px na cor da linha. */
+  box-shadow:
+    0 1px 2px rgba(23,29,55,.14),
+    0 12px 32px rgba(36,43,79,.18),
+    0 0 0 1px color-mix(in srgb, var(--line) 60%, transparent);
+}
+.hero--home h1 {
+  font-size: clamp(2.05rem, 5.5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -.055em;
+  line-height: 1.05;
+  margin: 24px auto 14px;
+  max-width: 16ch;
+  text-wrap: balance;
+}
+/* Título com degradê ink→marca, protegido por @supports: sem suporte a
+   background-clip: text, o texto fica sólido na cor do tema. */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .hero--home h1 {
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    background: linear-gradient(180deg, var(--ink) 55%, color-mix(in srgb, var(--ink) 40%, var(--brand)));
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+}
+.hero--home p {
+  max-width: 58ch;
+  margin: 0 auto 8px;
+  font-size: clamp(1.05rem, 1.4vw, 1.18rem);
+  line-height: 1.7;
+  letter-spacing: -.005em;
+}
+.hero--home nav { margin-top: 30px; }
+.hero--home nav button {
+  padding: 13px 26px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  transition: transform .18s ease-out, filter .18s ease-out, box-shadow .18s ease-out, background .18s ease-out, border-color .18s ease-out;
+}
+/* CTA principal: elevado, com brilho colorido da marca. */
+.hero--home nav button:not(.secundario) { box-shadow: var(--cta-glow); }
+.hero--home nav button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+}
+.hero--home nav button:not(.secundario):hover:not(:disabled) { box-shadow: var(--cta-glow-hover); }
+.hero--home nav button:active:not(:disabled) { transform: translateY(0) scale(.98); filter: none; }
+/* CTAs secundários como chips de vidro. */
+.hero--home nav button.secundario {
+  background: var(--input-bg);
+  background: color-mix(in srgb, var(--input-bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.hero--home nav button.secundario:hover:not(:disabled) {
+  background: var(--brand-soft);
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
+  box-shadow: var(--shadow-sm);
+}
+.hero--home nav button:focus-visible {
+  outline: 2px solid var(--senha-focus-ring);
+  outline-offset: 3px;
+}
+
 /* ---------- Formulários ---------- */
 label { font-weight: 500; color: var(--ink); }
 label[for] { display: block; margin-top: 14px; }
@@ -471,7 +605,8 @@ a { color: var(--link); }
   border-radius: var(--radius);
   background: var(--bg);
 }
-.vazio .vazio-ico { font-size: 2rem; display: block; margin-bottom: 6px; }
+.vazio .vazio-ico { display: block; margin-bottom: 6px; }
+.vazio .vazio-ico svg { width: 28px; height: 28px; display: block; margin: 0 auto; }
 /* Bloco de sessão/rede: quando a área logada não carrega (401 ou servidor
    fora do ar), mostra um convite para logar em vez da mensagem crua de erro.
    Reaproveita o contêiner .vazio acima, usando as variáveis do tema. */
@@ -850,18 +985,46 @@ section.tem-banner-perfil .perfil-topo { position: relative; z-index: 1; }
 .toast-info { background: var(--brand-dark); }
 
 /* ---------- Perguntas frequentes (home) ---------- */
+/* Painel de vidro: fallback sólido primeiro, translúcido + blur depois. */
+.faq {
+  background: var(--card);
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-color: color-mix(in srgb, var(--line) 75%, var(--brand) 10%);
+  box-shadow: var(--shadow-layered);
+}
 .faq details {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 12px 16px;
   margin: 8px 0;
   background: var(--bg);
+  transition: border-color .18s ease-out, box-shadow .18s ease-out, transform .18s ease-out, background .18s ease-out;
+}
+.faq details:hover {
+  border-color: var(--brand-line);
+  background: var(--bg-soft);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.faq details[open] {
+  border-color: var(--brand-line);
+  box-shadow: var(--shadow-sm);
 }
 .faq summary {
   font-weight: 600;
   color: var(--ink);
   cursor: pointer;
 }
+.faq summary:focus-visible {
+  outline: 2px solid var(--senha-focus-ring);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.faq summary::marker { color: var(--brand); }
+/* Uso parcimonioso do acento secundário: só o marcador do item aberto. */
+.faq details[open] summary::marker { color: var(--accent); }
 .faq details p { margin: 8px 0 0; }
 
 /* ---------- Sobre nós ---------- */
@@ -944,6 +1107,14 @@ section.tem-banner-perfil .perfil-topo { position: relative; z-index: 1; }
   font-size: .95rem;
   color: var(--ink);
   justify-content: flex-start;
+}
+/* Marcador de check no lugar dos emojis (o "✓" é símbolo tipográfico
+   monocromático e acompanha a cor do tema automaticamente). */
+.feat-list li::before {
+  content: '✓';
+  flex: none;
+  color: var(--brand);
+  font-weight: 700;
 }
 
 .tech-chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1517,4 +1688,40 @@ html[data-tema="escuro"] .negocio-card form button:not(.social-btn):not(.senha-t
 @media (max-width: 760px) {
   .upload-previa.foto { width: 64px; border-radius: 20px; }
   .public-profile-banner { height: clamp(110px, 26vw, 180px); }
+}
+
+/* =====================================================
+   Home "moderno premium" — movimento e ajuste fino
+   ===================================================== */
+
+/* Deriva lenta da aurora (só para quem aceita movimento). */
+@media (prefers-reduced-motion: no-preference) {
+  .hero--home::before { animation: aurora-a 22s ease-in-out infinite alternate; }
+  .hero--home::after { animation: aurora-b 26s ease-in-out infinite alternate; }
+}
+@keyframes aurora-a {
+  from { transform: translate3d(0,0,0) scale(1); }
+  to { transform: translate3d(9%, 7%, 0) scale(1.12); }
+}
+@keyframes aurora-b {
+  from { transform: translate3d(0,0,0) scale(1.05); }
+  to { transform: translate3d(-8%, -6%, 0) scale(1); }
+}
+
+/* Preferência por menos movimento: para o drift e desliga as
+   micro-interações de transform (a11y — nada de animação forçada). */
+@media (prefers-reduced-motion: reduce) {
+  .hero--home::before,
+  .hero--home::after { animation: none !important; }
+  .hero--home nav button,
+  .faq details { transition: none !important; }
+  .hero--home nav button:hover:not(:disabled),
+  .faq details:hover { transform: none !important; }
+}
+
+/* Viewport estreito: luzes com blur menor (custo de GPU e definição). */
+@media (max-width: 640px) {
+  .hero--home::before,
+  .hero--home::after { filter: blur(42px); }
+  .hero--home nav button { padding: 12px 20px; }
 }

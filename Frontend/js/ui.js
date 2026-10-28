@@ -289,6 +289,30 @@ function voltarAposLogin(padrao) {
 // Uso: blocoSemAcesso(lista, r, 'suas tarefas', 'login-cliente.html')
 // ==========================================
 
+// SVGs inline (mesmo padrão do ICONE_OLHO) no lugar de emojis: herdam a
+// cor do tema via currentColor e não dependem da fonte de símbolos do SO.
+const SVG_CADEADO =
+  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>' +
+  '<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>' +
+  '</svg>';
+const SVG_SEM_CONEXAO =
+  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<line x1="1" y1="1" x2="23" y2="23"></line>' +
+  '<path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>' +
+  '<path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>' +
+  '<path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>' +
+  '<path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>' +
+  '<path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>' +
+  '<line x1="12" y1="20" x2="12.01" y2="20"></line>' +
+  '</svg>';
+const SVG_ALERTA =
+  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>' +
+  '<line x1="12" y1="9" x2="12" y2="13"></line>' +
+  '<line x1="12" y1="17" x2="12.01" y2="17"></line>' +
+  '</svg>';
+
 function blocoSemAcesso(alvo, r, oQue, paginaLogin) {
   if (!alvo) return;
 
@@ -299,7 +323,7 @@ function blocoSemAcesso(alvo, r, oQue, paginaLogin) {
     let expirou = false;
     try { expirou = !!localStorage.getItem('saops_usuario'); } catch (e) { /* sem armazenamento */ }
     alvo.innerHTML = '<div class="vazio">' +
-      '<span class="vazio-ico" aria-hidden="true">🔒</span>' +
+      '<span class="vazio-ico" aria-hidden="true">' + SVG_CADEADO + '</span>' +
       '<p class="vazio-titulo">' + (expirou ? 'Sua sessão expirou.' : 'Você precisa estar logado.') + '</p>' +
       '<p class="vazio-texto">Entre na sua conta para ver ' + esc(oQue || 'seus dados') + '.</p>' +
       '<button type="button" class="vazio-botao">Fazer login</button>' +
@@ -316,7 +340,7 @@ function blocoSemAcesso(alvo, r, oQue, paginaLogin) {
   // 2) Falha de rede de verdade (fetch não chegou ao servidor).
   if (r && r.semConexao) {
     alvo.innerHTML = '<div class="vazio">' +
-      '<span class="vazio-ico" aria-hidden="true">📡</span>' +
+      '<span class="vazio-ico" aria-hidden="true">' + SVG_SEM_CONEXAO + '</span>' +
       '<p class="vazio-titulo">Não foi possível conectar ao servidor.</p>' +
       '<p class="vazio-texto">Verifique sua conexão com a internet e tente novamente em instantes.</p>' +
       '</div>';
@@ -325,7 +349,7 @@ function blocoSemAcesso(alvo, r, oQue, paginaLogin) {
 
   // 3) Outro erro da API (500, validação): motivo neutro, sem culpar o backend.
   alvo.innerHTML = '<div class="vazio">' +
-    '<span class="vazio-ico" aria-hidden="true">⚠️</span>' +
+    '<span class="vazio-ico" aria-hidden="true">' + SVG_ALERTA + '</span>' +
     '<p class="vazio-titulo">Não foi possível carregar ' + esc(oQue || 'os dados') + '.</p>' +
     (r && r.erro ? '<p class="vazio-texto">' + esc(r.erro) + '</p>' : '') +
     '</div>';

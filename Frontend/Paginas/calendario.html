@@ -213,7 +213,7 @@
       btn.textContent = t.concluido ? 'Reabrir' : 'Concluir';
       btn.onclick = async () => {
         const r = await atualizarTarefa(t.id, { concluido: t.concluido ? 0 : 1 });
-        if (r.sucesso) { toast(t.concluido ? 'Tarefa reaberta.' : 'Tarefa concluída! 🎉', 'sucesso'); carregar(); }
+        if (r.sucesso) { toast(t.concluido ? 'Tarefa reaberta.' : 'Tarefa concluída!', 'sucesso'); carregar(); }
         else toast('Erro: ' + r.erro, 'erro');
       };
       li.appendChild(btn);
@@ -226,8 +226,9 @@
     if (grade.dataset.primeira !== '1') grade.innerHTML = esqueletoCard('sk-full');
     const [r, rt] = await Promise.all([listarAgendamentos(), listarTarefas()]);
     if (!r.sucesso) {
-      statusCal.textContent = 'Erro: ' + r.erro + ' (backend rodando?)';
-      grade.innerHTML = '';
+      // 401 → convite para logar; rede fora → aviso de conexão; resto → motivo neutro
+      statusCal.textContent = '';
+      blocoSemAcesso(grade, r, 'seus agendamentos', 'login-cliente.html');
       return;
     }
     porData = {};

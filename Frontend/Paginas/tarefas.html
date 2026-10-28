@@ -122,7 +122,9 @@
   function pintar(tarefas) {
     lista.innerHTML = '';
     if (!tarefas.length) {
-      lista.innerHTML = '<div class="vazio"><span class="vazio-ico">✔️</span>Nenhuma tarefa por aqui. Adicione a primeira acima!</div>';
+      lista.innerHTML = '<div class="vazio"><span class="vazio-ico" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>' +
+        '</span>Nenhuma tarefa por aqui. Adicione a primeira acima!</div>';
       statusLista.textContent = 'Tudo em ordem.';
       return;
     }
@@ -149,7 +151,7 @@
         if (!(await exigirLogin('login-cliente.html'))) return;
         const r = await atualizarTarefa(t.id, { concluido: t.concluido ? 0 : 1 });
         if (r.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
-        if (r.sucesso) { toast(t.concluido ? 'Tarefa reaberta.' : 'Tarefa concluída! 🎉', 'sucesso'); carregar(); }
+        if (r.sucesso) { toast(t.concluido ? 'Tarefa reaberta.' : 'Tarefa concluída!', 'sucesso'); carregar(); }
         else toast('Erro: ' + r.erro, 'erro');
       };
 
@@ -177,8 +179,9 @@
     const filtro = campoDataFiltro.value ? { data: campoDataFiltro.value } : {};
     const r = await listarTarefas(filtro);
     if (!r.sucesso) {
-      lista.innerHTML = '<div class="vazio">Erro: ' + esc(r.erro) + ' — o backend está rodando?</div>';
+      // 401 → convite para logar; rede fora → aviso de conexão; resto → motivo neutro
       statusLista.textContent = '';
+      blocoSemAcesso(lista, r, 'suas tarefas', 'login-cliente.html');
       return;
     }
     pintar(r.dados);
