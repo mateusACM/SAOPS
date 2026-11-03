@@ -112,6 +112,7 @@ function publico(u) {
         bio: u.bio || null,
         anos_experiencia: u.anos_experiencia ?? null,
         instagram: u.instagram || null,
+        whatsapp: u.whatsapp || null,
         banner: u.banner || null,
         foto_upload: u.foto_upload || null,
         disponibilidade: u.disponibilidade || DISPONIBILIDADE_PADRAO,
@@ -253,6 +254,27 @@ router.put('/negocio', exigirLogin, async (req, res) => {
     if (bioFinal.length > 800) return res.status(400).json({ sucesso: false, erro: 'A apresentação deve ter no máximo 800 caracteres.' });
     if (experienciaFinal !== null && (!Number.isInteger(experienciaFinal) || experienciaFinal < 0 || experienciaFinal > 80)) return res.status(400).json({ sucesso: false, erro: 'Informe anos de experiência entre 0 e 80.' });
     if (instagramFinal && !/^[a-z0-9._]{1,30}$/.test(instagramFinal)) return res.status(400).json({ sucesso: false, erro: 'Informe apenas o usuário do Instagram (até 30 letras, números, pontos ou _).' });
+    // WhatsApp clique-para-conversar: undefined mantém o valor atual; null, vazio
+    // ou string sem dígitos limpa a coluna; string válida grava só os dígitos
+    // (10 ou 11, mesma regra do telefone) — o link wa.me é montado no frontend
+    const waFonte = req.body?.whatsapp;
+    let whatsappFinal;
+    if (waFonte === undefined) {
+        whatsappFinal = req.usuario.whatsapp ?? null; // manter o atual
+    } else if (waFonte === null) {
+        whatsappFinal = null; // limpar
+    } else {
+        const crua = String(waFonte);
+        if (crua.length > 30) return res.status(400).json({ sucesso: false, erro: 'WhatsApp muito longo (máx. 30 caracteres).' });
+        const digitos = crua.replace(/\D/g, '');
+        if (!digitos) {
+            whatsappFinal = null; // veio vazio/só símbolos: limpa
+        } else if (digitos.length < 10 || digitos.length > 11) {
+            return res.status(400).json({ sucesso: false, erro: 'WhatsApp inválido — informe o número com DDD (10 ou 11 dígitos).' });
+        } else {
+            whatsappFinal = digitos;
+        }
+    }
     const horario = req.body?.disponibilidade === undefined
         ? { sucesso: true, dados: req.usuario.disponibilidade || DISPONIBILIDADE_PADRAO }
         : normalizarDisponibilidade(req.body.disponibilidade);
@@ -266,8 +288,8 @@ router.put('/negocio', exigirLogin, async (req, res) => {
     const fotoFinal = fotoMidia.manter ? (req.usuario.foto_upload ?? null) : fotoMidia.dados;
     try {
         const novo = await q(
-            'UPDATE usuarios SET nome = $1, categoria = $2, endereco = $3, bio = $4, anos_experiencia = $5, instagram = $6, disponibilidade = $7, banner = $8, foto_upload = $9 WHERE id = $10 RETURNING *',
-            [nomeFinal, categoriaFinal, enderecoFinal, bioFinal || null, experienciaFinal, instagramFinal, horario.dados, bannerFinal, fotoFinal, req.usuario.id]
+            'UPDATE usuarios SET nome = $1, categoria = $2, endereco = $3, bio = $4, anos_experiencia = $5, instagram = $6, disponibilidade = $7, banner = $8, foto_upload = $9, whatsapp = $10 WHERE id = $11 RETURNING *',
+            [nomeFinal, categoriaFinal, enderecoFinal, bioFinal || null, experienciaFinal, instagramFinal, horario.dados, bannerFinal, fotoFinal, whatsappFinal, req.usuario.id]
         );
         res.json({ sucesso: true, usuario: publico(novo.rows[0]) });
     } catch (e) {

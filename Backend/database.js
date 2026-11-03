@@ -124,7 +124,10 @@ const SCHEMA = [
     `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS foto_upload TEXT`,
     // Corrige sessões antigas gravadas em ISO (com 'T'/'Z') para o formato do AGORA_SQL.
     // Idempotente: na segunda execução não há mais linhas com 'T'.
-    `UPDATE sessoes SET expira_em = replace(substr(expira_em, 1, 19), 'T', ' ') WHERE expira_em LIKE '%T%'`
+    `UPDATE sessoes SET expira_em = replace(substr(expira_em, 1, 19), 'T', ' ') WHERE expira_em LIKE '%T%'`,
+    // WhatsApp clique-para-conversar do prestador: guardamos só os dígitos,
+    // o link wa.me é montado no frontend
+    `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS whatsapp TEXT`
 ];
 
 async function limparSessoes() {

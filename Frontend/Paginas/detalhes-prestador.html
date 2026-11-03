@@ -50,6 +50,8 @@
 <script>
   const id = new URLSearchParams(window.location.search).get('id');
   const main = document.getElementById('conteudo');
+  // Mensagem pré-preenchida do WhatsApp clique-para-conversa.
+  const MENSAGEM_WHATSAPP = 'Olá! Vi seu perfil no SAOPS e gostaria de agendar um horário.';
   const dias = [
     { chave: 'dom', nome: 'Domingo' }, { chave: 'seg', nome: 'Segunda' }, { chave: 'ter', nome: 'Terça' },
     { chave: 'qua', nome: 'Quarta' }, { chave: 'qui', nome: 'Quinta' }, { chave: 'sex', nome: 'Sexta' }, { chave: 'sab', nome: 'Sábado' }
@@ -111,7 +113,32 @@
       try { if (navigator.share) await navigator.share({ title: p.nome, text: `Conheça ${p.nome} no SAOPS`, url: location.href }); else { await navigator.clipboard.writeText(location.href); toast('Link do perfil copiado!', 'sucesso'); } }
       catch (erro) { if (erro.name !== 'AbortError') toast('Não foi possível compartilhar neste dispositivo.', 'erro'); }
     });
-    intro.append(fatos); hero.append(avatar, intro, compartilhar); main.append(hero);
+    intro.append(fatos);
+    // WhatsApp clique-para-conversa: o servidor nunca envia o link pronto —
+    // ele é montado aqui, e o botão só existe se o prestador publicou um
+    // número válido (10 ou 11 dígitos, sem DDI). Campo ausente/null/inválido
+    // (backend antigo) não renderiza nada.
+    const whatsappDigitos = typeof p.whatsapp === 'string' ? p.whatsapp.replace(/\D/g, '') : '';
+    if (/^\d{10,11}$/.test(whatsappDigitos)) {
+      const acoes = elemento('div', 'profile-cta-row');
+      const whatsapp = elemento('a', 'btn-whatsapp', '');
+      whatsapp.href = `https://wa.me/55${whatsappDigitos}?text=${encodeURIComponent(MENSAGEM_WHATSAPP)}`;
+      whatsapp.target = '_blank';
+      whatsapp.rel = 'noopener noreferrer';
+      const icone = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icone.setAttribute('viewBox', '0 0 24 24');
+      icone.setAttribute('width', '18');
+      icone.setAttribute('height', '18');
+      icone.setAttribute('fill', 'currentColor');
+      icone.setAttribute('aria-hidden', 'true');
+      const caminho = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      caminho.setAttribute('d', 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.2-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z');
+      icone.append(caminho);
+      whatsapp.append(icone, document.createTextNode('Falar no WhatsApp'));
+      acoes.append(whatsapp);
+      intro.append(acoes);
+    }
+    hero.append(avatar, intro, compartilhar); main.append(hero);
 
     const sobre = elemento('section', 'public-profile-panel profile-about');
     sobre.append(elemento('p', 'auth-card-kicker', 'UM POUCO SOBRE'), elemento('h2', '', 'Um atendimento com identidade'));

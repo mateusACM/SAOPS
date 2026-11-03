@@ -19,6 +19,9 @@
         <label for="bio_negocio" class="profile-wide-field">Sua apresentação</label><textarea id="bio_negocio" class="profile-wide-field" maxlength="800" rows="4" placeholder="Conte sua história, seu jeito de atender e o que faz seu trabalho especial."></textarea>
         <label for="experiencia_negocio">Anos de experiência</label><input id="experiencia_negocio" type="number" min="0" max="80" step="1" placeholder="Ex.: 5">
         <label for="instagram_negocio">Instagram</label><input id="instagram_negocio" maxlength="30" autocomplete="off" placeholder="seu.perfil">
+        <label for="whatsapp_negocio">WhatsApp (opcional)</label><input id="whatsapp_negocio" type="tel" inputmode="tel" maxlength="16" autocomplete="off" placeholder="(11) 99999-8888" aria-describedby="whatsapp_ajuda whatsapp_aviso">
+        <p id="whatsapp_ajuda" class="campo-ajuda profile-wide-field">Fica visível no seu perfil público; os clientes falam direto com você pelo WhatsApp.</p>
+        <p id="whatsapp_aviso" class="campo-aviso profile-wide-field">Atenção: o número fica público para quem visitar seu perfil.</p>
         <div class="profile-wide-field upload-imagem"><span class="upload-titulo">Banner do negócio</span><p class="upload-ajuda">Fica atrás do avatar no seu perfil público (proporção ~21:9). Use uma imagem larga e horizontal.</p><div id="banner_previa" class="upload-previa banner" hidden></div><div class="upload-botoes"><label class="upload-rotulo" for="banner_arquivo">Escolher imagem<input id="banner_arquivo" type="file" accept="image/*"></label><button type="button" id="remover_banner" class="mini perigo" hidden>Remover banner</button></div><p id="banner_tamanho" class="upload-tamanho" role="status"></p></div>
         <div class="profile-wide-field upload-imagem"><span class="upload-titulo">Foto do negócio</span><p class="upload-ajuda">Aparece como avatar no perfil público, no lugar das iniciais. O recorte quadrado central é feito automaticamente.</p><div id="foto_previa" class="upload-previa foto" hidden></div><div class="upload-botoes"><label class="upload-rotulo" for="foto_arquivo">Escolher imagem<input id="foto_arquivo" type="file" accept="image/*"></label><button type="button" id="remover_foto" class="mini perigo" hidden>Remover foto</button></div><p id="foto_tamanho" class="upload-tamanho" role="status"></p></div>
         <button type="submit">Salvar perfil</button></form>
@@ -150,8 +153,17 @@
       input.addEventListener('change', () => { escolherImagem(tipo, input.files && input.files[0]).finally(() => { input.value = ''; }); });
       q(`remover_${tipo}`).addEventListener('click', () => { imagensNegocio[tipo].novo = null; atualizarPreviaImagem(tipo); });
     });
+    // WhatsApp: guarda apenas dígitos; o display pode vir formatado, o que
+    // vai para o servidor é o número puro (a regra de 10-11 dígitos é
+    // revalidada no backend).
+    function formatarWhatsapp(digitos) {
+      if (digitos.length === 11) return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
+      if (digitos.length === 10) return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`;
+      return digitos;
+    }
     async function salvarPerfil(mensagem) {
-      const dados = { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim(), bio: q('bio_negocio').value.trim(), anos_experiencia: q('experiencia_negocio').value, instagram: q('instagram_negocio').value.trim(), disponibilidade: disponibilidadeAtual(), ...dadosImagensNegocio() };
+      const whatsappDigitos = q('whatsapp_negocio').value.replace(/\D/g, '');
+      const dados = { nome: q('nome_negocio').value.trim(), categoria: q('categoria_negocio').value, endereco: q('endereco_negocio').value.trim(), bio: q('bio_negocio').value.trim(), anos_experiencia: q('experiencia_negocio').value, instagram: q('instagram_negocio').value.trim(), whatsapp: whatsappDigitos || null, disponibilidade: disponibilidadeAtual(), ...dadosImagensNegocio() };
       const out = await chamarAuth('negocio', { metodo: 'PUT', dados });
       if (out.sucesso) registrarImagensSalvas(out.usuario, dados);
       informar('status_negocio', out.sucesso ? mensagem : (out.erro || 'Não foi possível salvar.'));
@@ -187,6 +199,9 @@
       const atual = await usuarioAtual();
       if (!atual.sucesso || atual.usuario.tipo !== 'empresa') { window.location.replace('painel-prestador.html'); return; }
       const u = atual.usuario; negocioId = u.id; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || ''; q('bio_negocio').value = u.bio || ''; q('experiencia_negocio').value = u.anos_experiencia ?? ''; q('instagram_negocio').value = u.instagram || ''; preencherDisponibilidade(u.disponibilidade);
+      // WhatsApp: guard para campo ausente/null (backend antigo) — só
+      // preenche se vier uma string válida; null/inválido deixa o campo vazio.
+      if (typeof u.whatsapp === 'string' && /^\d{10,11}$/.test(u.whatsapp)) q('whatsapp_negocio').value = formatarWhatsapp(u.whatsapp);
       imagensNegocio.banner.atual = typeof u.banner === 'string' ? u.banner : null;
       imagensNegocio.foto.atual = typeof u.foto_upload === 'string' ? u.foto_upload : null;
       atualizarPreviaImagem('banner'); atualizarPreviaImagem('foto');
@@ -208,6 +223,13 @@
     q('horarios_form').addEventListener('submit', async (e) => { e.preventDefault(); await salvarPerfil('Horários de atendimento salvos.'); });
     formServico.addEventListener('submit', async (e) => { e.preventDefault(); const dados = { nome: q('servico_nome').value.trim(), descricao: q('servico_descricao').value.trim(), duracao_min: q('servico_duracao').value || null, preco: q('servico_preco').value || null }; const out = editando ? await atualizarServico(editando, dados) : await criarServico(dados); if (!out.sucesso) { toast(out.erro || 'Não foi possível salvar.', 'erro'); return; } preencherServico(null); carregarServicos(); });
     q('cancelar_edicao').onclick = () => preencherServico(null);
+    // Ícone do aviso do WhatsApp: SVG padrão da casa (ui.js) no lugar do emoji
+    // (que ficava colorido no Windows). Se o ui.js não carregar, o aviso segue
+    // só com o texto — a cor laranja da classe .campo-aviso já comunica.
+    const avisoWhats = q('whatsapp_aviso');
+    if (avisoWhats && typeof SVG_ALERTA !== 'undefined') {
+      avisoWhats.insertAdjacentHTML('afterbegin', '<span class="vazio-ico" aria-hidden="true">' + SVG_ALERTA + '</span> ');
+    }
     iniciar();
   </script><script src="../js/tema.js"></script>
 </body></html>
