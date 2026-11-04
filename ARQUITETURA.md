@@ -24,7 +24,7 @@ PostgreSQL 17 (Supabase) — 5 tabelas
 - **19 páginas** em `Paginas/` servidas como raiz estática + URLs amigáveis (`/calendario` → `calendario.html`)
 - **JS** em `js/`: `api.js` (chamadas REST + vitrine real), `ui.js` (avatar, nav ativa, `esc()`, skeletons, `exigirLogin`/`voltarAposLogin`), `tema.js` (claro/escuro), `lembretes.js` (avisos), `social.js` (Google) e `toast.js`
 - **CSS** em `CSS/style.css`: variáveis + tema escuro (`html[data-tema="escuro"]`)
-- **Imagens** em `img/`: logo PNG, lockup, favicon, og:image, ícones PWA + `logo-original.png` (fonte)
+- **Imagens** em `img/`: logo PNG, lockup, favicon, og:image + `logo-original.png` (fonte)
 
 ### 2. Backend (`Backend/`)
 - **`server.js`** — Express: CRUD `/agendamentos`, `/api/tarefas`, `/servicos`, rotas amigáveis, 404 real (`erro.html` com status 404), rate-limit no `/api/auth`
@@ -112,7 +112,7 @@ Erros de banco viram `{"erro":"Erro interno do servidor"}` (detalhes só no log)
 ```
 SAOPS/
 ├── Backend/          # server.js, auth.js, database.js, package.json
-├── Frontend/         # Paginas/ (18 + robots/sitemap/llms/manifest), js/ (7), CSS/, img/
+├── Frontend/         # Paginas/ (18 + robots/sitemap/llms), js/ (7), CSS/, img/
 ├── render.yaml       # Blueprint (build + start + auto-deploy)
 ├── README.md         # Visão geral e setup
 ├── DIAGRAMAS.md      # Arquitetura e fluxos (Mermaid)

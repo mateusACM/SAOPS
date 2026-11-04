@@ -6,6 +6,14 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.3] - 2026-11-04
+
+### Removido
+- **PWA / app instalável saiu do projeto**: removidos `Frontend/Paginas/manifest.webmanifest` e `Frontend/img/apple-touch-icon.png`, além das 2 linhas que os referenciavam em 18 páginas HTML (link do manifest e `apple-touch-icon`). O SAOPS é um **site web responsivo**, acessado pelo navegador, **sem instalação** — decisão do projeto: não é aplicativo. A responsividade e o layout para celular **permanecem** (nenhuma mudança visual)
+
+### Alterado
+- Documentação alinhada à remoção: `README.md`, `ARQUITETURA.md`, `AGENTS.md`, `.opencode/agents/eric.md`, `docs/TCC-REQUISITOS-DIAGRAMAS.md` (RF24 removido), `docs/TCC-COMPLEMENTO.md`, `docs/RESUMO-PROJETO-LEIGO.md` e `PRE-DOCUMENTACAO-TCC.md` deixaram de citar PWA/manifest (pendente de commit)
+
 ## [1.4.2] - 2026-10-26
 
 ### Adicionado
@@ -408,9 +416,9 @@ Para dúvidas sobre mudanças específicas:
 
 ---
 
-**Última atualização:** 29/09/2026
+**Última atualização:** 04/11/2026
 
-**Versão Atual:** 1.1.0 
+**Versão Atual:** 1.4.3 
 
 **Status:** Estamos muitos fodidos
 

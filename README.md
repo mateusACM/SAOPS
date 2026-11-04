@@ -48,7 +48,7 @@
 | 🔔 **Lembretes** | Aviso no site + notificação do navegador quando faltar pouco pro horário |
 | 🔐 **Login social** | Conta local (e-mail/senha com bcrypt) ou Google via OAuth |
 | 🌙 **Tema claro/escuro** | Segue o sistema, com alternância manual e sem flash ao carregar |
-| 📱 **PWA + responsivo** | Instalável, funciona bem no celular |
+| 📱 **Responsivo** | Layout adaptado para celular, tablet e desktop |
 | 🔎 **SEO + IAs** | Meta/Open Graph, sitemap, `robots.txt`, `llms.txt` e JSON-LD |
 
 ---
@@ -89,10 +89,10 @@ SAOPS/
 │   ├── database.js    # PostgreSQL (Supabase): agendamentos, tarefas, usuarios, sessoes, servicos
 │   └── package.json
 ├── Frontend/
-│   ├── Paginas/       # 19 páginas + robots.txt, sitemap.xml, llms.txt, manifest
+│   ├── Paginas/       # 19 páginas + robots.txt, sitemap.xml, llms.txt
 │   ├── js/            # api, ui, tema, lembretes, social, toast, cadastro
 │   ├── CSS/           # Tema Google Agenda (variáveis + modo escuro)
-│   └── img/           # Logo, favicon, og:image e ícones PWA
+│   └── img/           # Logo, favicon e og:image
 ├── README.md
 ├── DIAGRAMAS.md       # Arquitetura, banco e fluxos em Mermaid
 └── render.yaml        # Blueprint do deploy no Render
