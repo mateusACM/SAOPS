@@ -95,6 +95,12 @@
 
     <button type="button" id="btn_sair_conta" class="perigo">Sair da conta</button>
 
+    <div class="excluir-conta-cartao" aria-labelledby="titulo_excluir_conta">
+      <p class="excluir-conta-titulo" id="titulo_excluir_conta">Excluir conta?</p>
+      <p class="excluir-conta-texto">Ao excluir, os agendamentos futuros são cancelados e seu histórico é anonimizado. Não há como desfazer.</p>
+      <button type="button" id="btn_excluir_conta" class="mini perigo">Excluir minha conta</button>
+    </div>
+
   </main>
 
 <script src="../js/toast.js"></script>
@@ -213,8 +219,12 @@
   };
 
   // Se não houver dados locais, completa pela sessão do servidor
+  let providerConta = null; // 'local' | 'google' (vindo do /eu)
   usuarioAtual().then((r) => {
     if (!r.sucesso || !r.usuario) return;
+    // Guarda como o usuário entra: a zona de perigo usa isso para
+    // decidir se pede senha (conta local) ou não (conta Google).
+    providerConta = r.usuario.provider || null;
     if (nomeInput.value && emailInput.value) return;
     nomeInput.value = nomeInput.value || r.usuario.nome || '';
     emailInput.value = emailInput.value || r.usuario.email || '';
@@ -257,6 +267,36 @@
     });
   }
   carregar();
+
+  // ---------- Excluir conta (LGPD art. 18) ----------
+  const btnExcluirConta = document.getElementById('btn_excluir_conta');
+  btnExcluirConta.addEventListener('click', async () => {
+    if (!confirm('Isso apaga sua conta para sempre: agendamentos futuros serão cancelados e seu histórico será anonimizado. Não dá para desfazer. Continuar?')) return;
+
+    // Conta local exige a senha; conta Google não tem senha (o backend
+    // ignora o campo). Se o /eu ainda não respondeu (providerConta nulo),
+    // tratamos como local por segurança: enviar senha a mais não quebra nada.
+    let senha = null;
+    if (providerConta !== 'google') {
+      senha = prompt('Digite sua senha para confirmar a exclusão:');
+      if (senha === null || senha === '') return; // cancelou: não toca na API
+    }
+
+    btnExcluirConta.disabled = true;
+    const r = await excluirConta(senha);
+    btnExcluirConta.disabled = false;
+
+    if (r.sucesso) {
+      limparSessaoLocal();
+      toast('Conta excluída.', 'sucesso');
+      setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+      return;
+    }
+    if (r.naoAutenticado) { exigirLogin('login-cliente.html'); return; }
+    // Senha errada: só avisa — a sessão continua valendo.
+    if (r.senhaIncorreta) { toast('Senha incorreta.', 'erro'); return; }
+    toast(r.semConexao ? 'Sem conexão com o servidor. Tente novamente.' : (r.erro || 'Não foi possível excluir a conta agora.'), 'erro');
+  });
 
   // ---------- Lembretes (notificações) ----------
   const toggleLembrete = document.getElementById('toggle_lembretes');

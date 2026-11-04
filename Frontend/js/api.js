@@ -315,6 +315,45 @@ function salvarSessaoLocal(usuario) {
     } catch (e) { /* modo privado/cota cheia: segue sem salvar */ }
 }
 
+// Limpa os rastros locais do usuário (par do salvarSessaoLocal — usado
+// no logout e na exclusão de conta).
+function limparSessaoLocal() {
+    try {
+        ['saops_usuario', 'nome_cliente', 'email_cliente', 'saops_foto', 'telefone']
+            .forEach((chave) => localStorage.removeItem(chave));
+    } catch (e) { /* sem armazenamento: nada a limpar */ }
+}
+
+// ==========================================
+// EXCLUIR CONTA (LGPD art. 18 - direito de eliminação)
+// ==========================================
+
+// Conta local exige a senha correta (400 "Senha incorreta."); conta
+// Google não tem senha (o backend ignora o campo). Em caso de sucesso
+// o próprio servidor limpa o cookie de sessão.
+async function excluirConta(senha) {
+    try {
+        const response = await fetch(`${API_URL}/api/auth/conta`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ senha: senha || null }),
+            credentials: 'include'
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.ok) return { sucesso: true, dados: result };
+        const mensagem = result.erro || 'Não foi possível excluir a conta.';
+        return {
+            sucesso: false,
+            erro: mensagem,
+            naoAutenticado: response.status === 401,
+            // 400 cujo texto menciona "senha" = senha errada (conta local)
+            senhaIncorreta: response.status === 400 && /senha/i.test(mensagem)
+        };
+    } catch (error) {
+        return { sucesso: false, erro: error.message, semConexao: true };
+    }
+}
+
 // ==========================================
 // SERVIÇOS DO PRESTADOR (/servicos)
 // ==========================================

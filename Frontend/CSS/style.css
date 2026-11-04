@@ -1772,3 +1772,25 @@ html[data-tema="escuro"] .negocio-card form button:not(.social-btn):not(.senha-t
 /* ---------- Campo WhatsApp no formulário do negócio ---------- */
 .campo-ajuda { margin: 2px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.5; }
 .campo-aviso { margin: 4px 0 0; color: var(--warn-text); font-size: .8rem; font-weight: 650; }
+
+/* =====================================================
+   Excluir conta (LGPD art. 18) — perfil e meu-negocio:
+   cartão discreto com borda e fundo de aviso, título,
+   texto explicativo e o botão .mini.perigo. A confirmação
+   grave segue no confirm()/prompt() do fluxo.
+   ===================================================== */
+.excluir-conta-cartao {
+  margin: 28px 0 0;
+  padding: 18px 20px;
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warn-soft) 65%, transparent);
+}
+.excluir-conta-titulo { margin: 0 0 6px; color: var(--warn-text); font-size: 1.05rem; font-weight: 800; }
+.excluir-conta-texto { margin: 0 0 14px; color: var(--muted); font-size: .92rem; line-height: 1.55; }
+.excluir-conta-cartao .mini.perigo:focus-visible { outline: 2px solid var(--warn-text); outline-offset: 2px; }
+
+/* No mobile: padding reduzido e cartão em largura total. */
+@media (max-width: 640px) {
+  .excluir-conta-cartao { width: 100%; padding: 14px; }
+}

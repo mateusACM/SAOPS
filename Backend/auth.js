@@ -77,6 +77,15 @@ function lerCookies(req) {
     return out;
 }
 
+// "Hoje" (YYYY-MM-DD) no fuso America/Sao_Paulo, sem depender da TZ do processo
+// (Render roda em UTC) — mesmo estilo do agoraSaoPaulo() do server.js
+function hojeSaoPaulo() {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+}
+
 async function criarSessao(req, res, usuario) {
     try {
         const token = crypto.randomBytes(32).toString('hex');
@@ -229,6 +238,64 @@ router.post('/logout', async (req, res) => {
         try { await q('DELETE FROM sessoes WHERE token = $1', [token]); } catch (e) { console.error('Erro interno:', e.message); }
     }
     limpar();
+});
+
+// Exclusão de conta — direito de eliminação do titular (LGPD, art. 18).
+// Agendamentos NÃO são apagados (histórico do negócio importa): os futuros
+// viram 'cancelado'; quem exclui como CLIENTE anonimiza o próprio histórico
+// pessoal (nome_cliente/telefone); como EMPRESA não mexe nesses dados — são
+// dos clientes. Sessões e serviços caem por CASCADE na FK do usuário.
+router.delete('/conta', exigirLogin, async (req, res) => {
+    const u = req.usuario;
+    try {
+        // Conta local confirma com senha; conta Google não tem senha — só apaga
+        if (u.provider === 'local') {
+            const ok = u.senha_hash && await bcrypt.compare(String(req.body?.senha || ''), u.senha_hash);
+            if (!ok) return res.status(400).json({ sucesso: false, erro: 'Senha incorreta.' });
+        }
+
+        // Hoje (YYYY-MM-DD) no fuso de Brasília — coluna data é TEXT
+        const hoje = hojeSaoPaulo();
+
+        // Futuros do titular (como prestador, se empresa; como cliente, senão)
+        // viram 'cancelado' para ninguém ficar esperando atendimento morto
+        await q(
+            `UPDATE agendamentos SET status = 'cancelado'
+             WHERE ${u.tipo === 'empresa' ? 'prestador_id' : 'usuario_id'} = $1
+               AND data >= $2 AND status IN ('agendado', 'confirmado')`,
+            [u.id, hoje]
+        );
+
+        // Cliente anonimiza TODO o histórico pessoal; empresa não toca em
+        // nome_cliente/telefone — esses dados pertencem aos clientes
+        if (u.tipo !== 'empresa') {
+            await q(
+                "UPDATE agendamentos SET nome_cliente = '(conta removida)', telefone = NULL WHERE usuario_id = $1",
+                [u.id]
+            );
+        }
+
+        // Tarefas são pessoais: morrem junto
+        await q('DELETE FROM tarefas WHERE usuario_id = $1', [u.id]);
+
+        // Pedidos de destaque não têm ON DELETE CASCADE na FK: apaga antes
+        try {
+            await q('DELETE FROM pedidos_destaque WHERE usuario_id = $1', [u.id]);
+        } catch (e) {
+            if (e.code !== '42P01') throw e; // schema novo pode não ter a tabela do protótipo de destaque
+        }
+
+        // Apaga o usuário: cascade derruba sessoes (e servicos, se empresa)
+        const fim = await q('DELETE FROM usuarios WHERE id = $1', [u.id]);
+        if (fim.rowCount !== 1) return res.status(500).json({ sucesso: false, erro: 'Erro interno' });
+
+        // Mesmas opções de cookie usadas no login/logout
+        res.clearCookie(COOKIE, { httpOnly: true, sameSite: 'lax', secure: req.secure });
+        res.json({ sucesso: true, mensagem: 'Conta excluída.' });
+    } catch (e) {
+        console.error('Erro interno:', e.message);
+        res.status(500).json({ sucesso: false, erro: 'Erro interno' });
+    }
 });
 
 router.get('/eu', async (req, res) => {

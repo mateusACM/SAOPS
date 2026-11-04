@@ -45,11 +45,18 @@
       <label for="servico_preco">Preço (R$)</label><input id="servico_preco" type="number" min="0" step="0.01">
       <button id="salvar_servico" type="submit">Adicionar serviço</button><button id="cancelar_edicao" class="secundario" type="button" hidden>Cancelar edição</button>
     </form></section>
+
+    <div class="excluir-conta-cartao" aria-labelledby="titulo_excluir_conta">
+      <p class="excluir-conta-titulo" id="titulo_excluir_conta">Excluir conta?</p>
+      <p class="excluir-conta-texto">Ao excluir, seus serviços saem do ar e os agendamentos futuros dos seus clientes serão cancelados. Não há como desfazer.</p>
+      <button type="button" id="btn_excluir_conta" class="mini perigo">Excluir minha conta</button>
+    </div>
   </main>
   <script src="../js/toast.js"></script><script src="../js/ui.js"></script><script src="../js/api.js"></script>
   <script>
     let editando = null;
     let negocioId = null;
+    let providerUsuario = null; // 'local' | 'google' (vindo do /eu)
     // Estado das imagens do negócio: "atual" é o que já está salvo no servidor,
     // "novo" é a pendência do usuário (undefined = não mexeu, null = remover).
     const imagensNegocio = {
@@ -198,7 +205,7 @@
       if (!(await exigirLogin('login-empresa.html'))) return;
       const atual = await usuarioAtual();
       if (!atual.sucesso || atual.usuario.tipo !== 'empresa') { window.location.replace('painel-prestador.html'); return; }
-      const u = atual.usuario; negocioId = u.id; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || ''; q('bio_negocio').value = u.bio || ''; q('experiencia_negocio').value = u.anos_experiencia ?? ''; q('instagram_negocio').value = u.instagram || ''; preencherDisponibilidade(u.disponibilidade);
+      const u = atual.usuario; negocioId = u.id; providerUsuario = u.provider || null; q('nome_negocio').value = u.nome || ''; q('categoria_negocio').value = u.categoria || ''; q('endereco_negocio').value = u.endereco || ''; q('bio_negocio').value = u.bio || ''; q('experiencia_negocio').value = u.anos_experiencia ?? ''; q('instagram_negocio').value = u.instagram || ''; preencherDisponibilidade(u.disponibilidade);
       // WhatsApp: guard para campo ausente/null (backend antigo) — só
       // preenche se vier uma string válida; null/inválido deixa o campo vazio.
       if (typeof u.whatsapp === 'string' && /^\d{10,11}$/.test(u.whatsapp)) q('whatsapp_negocio').value = formatarWhatsapp(u.whatsapp);
@@ -223,6 +230,38 @@
     q('horarios_form').addEventListener('submit', async (e) => { e.preventDefault(); await salvarPerfil('Horários de atendimento salvos.'); });
     formServico.addEventListener('submit', async (e) => { e.preventDefault(); const dados = { nome: q('servico_nome').value.trim(), descricao: q('servico_descricao').value.trim(), duracao_min: q('servico_duracao').value || null, preco: q('servico_preco').value || null }; const out = editando ? await atualizarServico(editando, dados) : await criarServico(dados); if (!out.sucesso) { toast(out.erro || 'Não foi possível salvar.', 'erro'); return; } preencherServico(null); carregarServicos(); });
     q('cancelar_edicao').onclick = () => preencherServico(null);
+    // ============================================================
+    // Excluir conta (LGPD art. 18)
+    // ============================================================
+    q('btn_excluir_conta').addEventListener('click', async () => {
+      if (!confirm('Isso apaga sua conta para sempre: seus serviços saem do ar e os agendamentos futuros dos seus clientes serão cancelados. Não dá para desfazer. Continuar?')) return;
+
+      // Conta local exige a senha; conta Google não tem senha (o backend
+      // ignora o campo). Se o /eu ainda não respondeu (providerUsuario
+      // nulo), tratamos como local por segurança: enviar senha a mais
+      // não quebra nada.
+      let senha = null;
+      if (providerUsuario !== 'google') {
+        senha = prompt('Digite sua senha para confirmar a exclusão:');
+        if (senha === null || senha === '') return; // cancelou: não toca na API
+      }
+
+      const botao = q('btn_excluir_conta');
+      botao.disabled = true;
+      const out = await excluirConta(senha);
+      botao.disabled = false;
+
+      if (out.sucesso) {
+        limparSessaoLocal();
+        toast('Conta excluída.', 'sucesso');
+        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+        return;
+      }
+      if (out.naoAutenticado) { exigirLogin('login-empresa.html'); return; }
+      // Senha errada: só avisa — a sessão continua valendo.
+      if (out.senhaIncorreta) { toast('Senha incorreta.', 'erro'); return; }
+      toast(out.semConexao ? 'Sem conexão com o servidor. Tente novamente.' : (out.erro || 'Não foi possível excluir a conta agora.'), 'erro');
+    });
     // Ícone do aviso do WhatsApp: SVG padrão da casa (ui.js) no lugar do emoji
     // (que ficava colorido no Windows). Se o ui.js não carregar, o aviso segue
     // só com o texto — a cor laranja da classe .campo-aviso já comunica.
