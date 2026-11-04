@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Edite o perfil público do seu negócio e gerencie seus serviços no SAOPS.">
-  <meta name="robots" content="noindex, follow"><link rel="canonical" href="https://saops-zjyx.onrender.com/meu-negocio">
+  <meta name="robots" content="noindex, follow"><link rel="canonical" href="https://saops.com.br/meu-negocio">
   <title>SAOPS - Meu negócio</title><link rel="stylesheet" href="../CSS/style.css"><link rel="icon" type="image/png" href="../img/favicon.png">
   <script>try{var t=localStorage.getItem("saops_tema");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro";document.documentElement.dataset.tema=t}catch(e){}</script>
 </head>
@@ -216,7 +216,7 @@
     }
     q('compartilhar_negocio').addEventListener('click', async () => {
       if (!negocioId) return;
-      const origem = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'https://saops-zjyx.onrender.com' : location.origin;
+      const origem = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'https://saops.com.br' : location.origin;
       const url = `${origem}/detalhes-prestador.html?id=${encodeURIComponent(negocioId)}`;
       const titulo = q('nome_negocio').value.trim() || 'Meu negócio';
       try {

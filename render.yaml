@@ -14,4 +14,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: SAOPS_PUBLIC_URL
-        value: https://saops-zjyx.onrender.com
+        value: https://saops.com.br

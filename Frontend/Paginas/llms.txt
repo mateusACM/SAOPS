@@ -1,26 +1,26 @@
 # SAOPS
 
-> SAOPS é um sistema de agendamento online gratuito (TCC) para marcar horários em barbearias, salões, clínicas e outros prestadores. Cliente busca serviços e agenda em segundos; o prestador gerencia a agenda do dia com filtros. Web app em Node.js + PostgreSQL, tema Google Agenda (claro/escuro), 100% em português do Brasil. Em produção em https://saops-zjyx.onrender.com
+> SAOPS é um sistema de agendamento online gratuito (TCC) para marcar horários em barbearias, salões, clínicas e outros prestadores. Cliente busca serviços e agenda em segundos; o prestador gerencia a agenda do dia com filtros. Web app em Node.js + PostgreSQL, tema Google Agenda (claro/escuro), 100% em português do Brasil. Em produção em https://saops.com.br
 
 O SAOPS conecta clientes e prestadores de serviço: o cliente cria a conta gratuita (e-mail ou Google), encontra o serviço, escolhe dia e horário e confirma o agendamento (com opções de cancelar e reagendar); o prestador cadastra serviços e acompanha a agenda com busca por texto, filtros de status (agendado, confirmado, concluído, cancelado) e ordenação. Há lembretes de agendamento, tarefas do dia a dia com categorias, calendário mensal e login local ou social (Google). Os dados são armazenados em PostgreSQL no servidor (tabelas: agendamentos, tarefas, usuarios, sessoes, servicos).
 
 ## Páginas principais
 
-- [Início](https://saops-zjyx.onrender.com/): apresentação, recursos e perguntas frequentes
-- [Buscar prestadores](https://saops-zjyx.onrender.com/busca): busca por nome, categoria ou local
-- [Marcar horário](https://saops-zjyx.onrender.com/agendamento): escolha de serviço, dia e horário
-- [Calendário](https://saops-zjyx.onrender.com/calendario): visão mensal de agendamentos e tarefas
-- [Tarefas](https://saops-zjyx.onrender.com/tarefas): tarefas com categorias (casa, trabalho, estudos, saúde, pessoal)
-- [Agenda do prestador](https://saops-zjyx.onrender.com/agenda-prestador): gestão com filtros avançados
-- [Sobre nós](https://saops-zjyx.onrender.com/sobre-nos): equipe, tecnologia e números do projeto
+- [Início](https://saops.com.br/): apresentação, recursos e perguntas frequentes
+- [Buscar prestadores](https://saops.com.br/busca): busca por nome, categoria ou local
+- [Marcar horário](https://saops.com.br/agendamento): escolha de serviço, dia e horário
+- [Calendário](https://saops.com.br/calendario): visão mensal de agendamentos e tarefas
+- [Tarefas](https://saops.com.br/tarefas): tarefas com categorias (casa, trabalho, estudos, saúde, pessoal)
+- [Agenda do prestador](https://saops.com.br/agenda-prestador): gestão com filtros avançados
+- [Sobre nós](https://saops.com.br/sobre-nos): equipe, tecnologia e números do projeto
 
 ## API (JSON)
 
-- [GET /api/status](https://saops-zjyx.onrender.com/api/status): saúde do serviço
-- [GET /api/prestadores](https://saops-zjyx.onrender.com/api/prestadores): prestadores e serviços cadastrados
-- [GET /agendamentos](https://saops-zjyx.onrender.com/agendamentos): agendamentos da conta autenticada
-- [GET /agendamentos/data/AAAA-MM-DD](https://saops-zjyx.onrender.com/agendamentos/data/2099-05-01?prestador_id=1): horários ocupados do prestador
-- [GET /api/tarefas](https://saops-zjyx.onrender.com/api/tarefas): lista de tarefas
+- [GET /api/status](https://saops.com.br/api/status): saúde do serviço
+- [GET /api/prestadores](https://saops.com.br/api/prestadores): prestadores e serviços cadastrados
+- [GET /agendamentos](https://saops.com.br/agendamentos): agendamentos da conta autenticada
+- [GET /agendamentos/data/AAAA-MM-DD](https://saops.com.br/agendamentos/data/2099-05-01?prestador_id=1): horários ocupados do prestador
+- [GET /api/tarefas](https://saops.com.br/api/tarefas): lista de tarefas
 - POST /agendamentos, PUT /agendamentos/:id, DELETE /agendamentos/:id: CRUD de agendamentos (exige login)
 - GET /servicos: vitrine pública de serviços (com nome do prestador)
 - GET /servicos/meus, POST /servicos, PUT /servicos/:id, DELETE /servicos/:id: CRUD de serviços do prestador logado (só o dono altera)

@@ -35,11 +35,28 @@ const PORT = process.env.PORT || 3000; // Porta onde o servidor vai rodar
 // Confia no proxy do Render (para req.secure / cookies secure)
 app.set('trust proxy', 1);
 
+// Domínio oficial é o apex (https://saops.com.br). O www responde no Render,
+// mas redireciona em 301 para evitar conteúdo duplicado (canonical/SEO).
+// Só o www é redirecionado: o apex e o endereço *.onrender.com (rede de
+// segurança + health check GET /api/status) continuam servindo normalmente.
+app.use((req, res, next) => {
+    const host = String(req.headers.host || '').toLowerCase();
+    if (host === 'www.saops.com.br') {
+        return res.redirect(301, `https://saops.com.br${req.originalUrl}`);
+    }
+    next();
+});
+
 // CORS restrito a origens conhecidas. Com credenciais (cookies de sessão) o
 // navegador exige origem exata — por isso NÃO usamos 'origin: *'.
-// SAOPS_PUBLIC_URL (produção/Render) + origens de desenvolvimento (Live Server, :3000).
+// SAOPS_PUBLIC_URL (produção/Render) + domínio oficial (saops.com.br, e o
+// www que redireciona em 301 para o apex) + origens de desenvolvimento
+// (Live Server, :3000). As duas formas do domínio ficam explícitas para
+// continuarem liberadas mesmo se SAOPS_PUBLIC_URL vier vazio/errado.
 const ORIGENS_PERMITIDAS = [
     process.env.SAOPS_PUBLIC_URL,
+    'https://saops.com.br',
+    'https://www.saops.com.br',
     'http://localhost:5500',
     'http://127.0.0.1:5500',
     'http://localhost:3000',
