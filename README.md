@@ -12,7 +12,7 @@
 [![Licença](https://img.shields.io/badge/Licen%C3%A7a-MIT-green)](LICENSE)
 [![PRs](https://img.shields.io/badge/PRs-bem--vindos-brightgreen)](https://github.com/nicolaskmazzini-coder/SAOPS-new/pulls)
 
-[🌐 Demonstração ao vivo](https://saops-zjyx.onrender.com/) · [📖 Diagramas](DIAGRAMAS.md) · [🐛 Issues](https://github.com/nicolaskmazzini-coder/SAOPS-new/issues)
+[🌐 Demonstração ao vivo](saops.com.br) · [📖 Diagramas](DIAGRAMAS.md) · [🐛 Issues](https://github.com/nicolaskmazzini-coder/SAOPS-new/issues)
 
 </div>
 
