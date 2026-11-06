@@ -1,10 +1,10 @@
 # 📊 Diagramas do SAOPS
 
-Arquitetura, banco de dados e fluxos do sistema em [Mermaid](https://mermaid.js.org/) (renderizam direto no GitHub).
+Arquitetura em [Mermaid](https://mermaid.js.org/) (renderizam direto no GitHub).
 
 ---
 
-## 1. Arquitetura
+## 1. Arquitetura de Software
 
 ```mermaid
 flowchart TB
@@ -36,111 +36,161 @@ flowchart TB
 
 ---
 
-## 2. Banco de dados
+## 2. Diagrama de Classes
 
 ```mermaid
-erDiagram
-    usuarios ||--o{ sessoes : "tem"
-    usuarios ||--o{ servicos : "é dono de"
-    usuarios {
-        int id PK
-        string nome
-        string email UK
-        string senha_hash "null se social"
-        string telefone
-        string tipo "cliente/empresa"
-        string provider "local/google"
-        string provider_id
-        string foto
-        string categoria
-        string endereco
+classDiagram
+    class Usuario {
+        +id: number
+        +nome: string
+        +email: string
+        -senha_hash: string
+        +telefone: string
+        +tipo: cliente | empresa
+        +provider: local | google
+        +categoria: string
+        +endereco: string
+        +whatsapp: string
+        +banner: string
+        +foto_upload: string
+        +disponibilidade: JSON
+        +cadastrar()
+        +login()
+        +logout()
+        +atualizarNegocio()
+        +excluirConta()
     }
-    sessoes {
-        string token PK
-        int usuario_id FK
-        string expira_em "7 dias"
-    }
-    servicos {
-        int id PK
-        int usuario_id FK
-        string nome
-        string descricao
-        real preco
-        int duracao_min
-    }
-    agendamentos {
-        int id PK
-        string nome_cliente
-        string servico
-        string data "YYYY-MM-DD"
-        string horario "HH:MM"
-        string status "agendado, confirmado, concluido, cancelado"
-        int usuario_id FK
-        int prestador_id FK
-    }
-    tarefas {
-        int id PK
-        string titulo
-        string data
-        string hora
-        string categoria
-        int concluido "0/1"
-        int usuario_id FK
-    }
-```
 
-> Índices: `UNIQUE(prestador_id, data, horario)` em agendamentos (anti double-booking por negócio) + índices em `sessoes(expira_em, usuario_id)`. `agendamentos` pertencem ao cliente e ao prestador; tarefas pertencem ao usuário.
+    class Sessao {
+        +token: string
+        +usuario_id: number
+        +expira_em: string
+        +criarSessao()
+        +usuarioAtual()
+        +limparSessoes()
+    }
+
+    class Tarefa {
+        +id: number
+        +usuario_id: number
+        +titulo: string
+        +data: string
+        +hora: string
+        +categoria: string
+        +concluido: number
+        +criar()
+        +listar()
+        +atualizar()
+        +excluir()
+    }
+
+    class Servico {
+        +id: number
+        +usuario_id: number
+        +nome: string
+        +descricao: string
+        +preco: number
+        +duracao_min: number
+        +criar()
+        +listar()
+        +atualizar()
+        +excluir()
+    }
+
+    class Agendamento {
+        +id: number
+        +nome_cliente: string
+        +servico: string
+        +data: string
+        +horario: string
+        +telefone: string
+        +status: string
+        +usuario_id: number
+        +prestador_id: number
+        +criar()
+        +listar()
+        +atualizar()
+        +excluir()
+        +existeConflitoDeHorario()
+    }
+
+    Usuario "1" --> "0..*" Sessao : possui
+    Usuario "1" --> "0..*" Tarefa : organiza
+    Usuario "1" --> "0..*" Servico : oferece
+    Usuario "1" --> "0..*" Agendamento : marca (cliente)
+    Usuario "1" --> "0..*" Agendamento : atende (prestador)
+    Agendamento ..> Servico : usa a duração e o nome
+```
 
 ---
 
-## 3. Agendar horário (com login)
+## 3. Diagrama de atividade
 
 ```mermaid
-sequenceDiagram
-    actor C as Cliente
-    participant A as agendamento.html
-    participant UI as exigirLogin()
-    participant L as login-cliente.html
-    participant API as POST /agendamentos
-    participant DB as PostgreSQL
-    C->>A: escolhe serviço, dia e horário
-    A->>UI: exigirLogin()
-    alt sem sessão
-        UI->>L: guarda saops_voltar e redireciona
-        L->>L: login ok
-        L->>A: voltarAposLogin() devolve
+flowchart LR
+    START([Início]) --> BUSCAR["Buscar um prestador"]
+    BUSCAR --> PERFIL["Abrir o perfil e<br/>escolher o serviço"]
+    PERFIL --> LOGADO{Logado?}
+    LOGADO -- "Não" --> LOGIN["Fazer login ou criar conta"]
+    LOGADO -- "Sim" --> DATA
+    LOGIN --> DATA["Escolher a data"]
+    DATA --> LIVRES["Sistema exibe os horários<br/>livres dentro do expediente"]
+    LIVRES --> ESCOLHE["Escolher horário e confirmar"]
+    ESCOLHE --> VALIDOS{Dados válidos?}
+
+    subgraph ERROS["Validações (voltam ao fluxo)"]
+        direction LR
+        ERRO["Exibir erro (400)"] ~~~ OCUPADO["Avisar horário<br/>ocupado (409)"]
     end
-    A->>API: {nome, servico, data, horario}
-    API->>DB: SELECT data+horario (conflito?)
-    alt ocupado
-        DB-->>A: 409 Escolha outro horário
-    else livre
-        DB-->>A: 201 + id
-        A->>A: confirmacao-agendamento.html?id=
-    end
+
+    VALIDOS -- "Não" --> ERRO
+    ERRO --> LIVRES
+    VALIDOS -- "Sim" --> CONFLITO{Horário em conflito?}
+    CONFLITO -- "Sim" --> OCUPADO
+    OCUPADO --> LIVRES
+    CONFLITO -- "Não" --> GRAVAR["Gravar agendamento<br/>com status 'agendado'"]
+    GRAVAR --> CONFIRMA["Exibir confirmação"]
+    CONFIRMA --> FIM([Fim])
 ```
 
 ---
 
-## 4. Login local + sessão
+## 4. Diagrama de caso de uso
 
 ```mermaid
-sequenceDiagram
-    actor U as Usuário
-    participant F as login-*.html
-    participant API as POST /api/auth/login
-    participant DB as PostgreSQL
-    U->>F: e-mail (+ nome do negócio, se empresa) e senha
-    F->>API: e-mail e senha
-    API->>DB: busca por email (bcrypt.compare)
-    alt credenciais ok
-        DB-->>API: usuário
-        API->>DB: INSERT sessoes (token aleatório, 7 dias)
-        API-->>F: Set-Cookie saops_token (HttpOnly, Lax) + usuário
-        F->>F: salvarSessaoLocal() + voltarAposLogin()
-    else inválidas
-        API-->>F: 401 E-mail ou senha incorretos
+graph LR
+    subgraph SISTEMA["Sistema SAOPS"]
+        BUSCAR(["Buscar prestadores"])
+        PERFIL(["Ver perfil do prestador"])
+        AGENDAR(["Agendar horário"])
+        CANCELAR(["Cancelar ou reagendar"])
+        LEMBRETES(["Configurar lembretes"])
+        TAREFAS(["Gerenciar tarefas"])
+        CALENDARIO(["Ver calendário"])
+        WHATSAPP(["Chamar no WhatsApp"])
+        EXCLUIRCONTA(["Excluir conta (LGPD)"])
+        LOGIN(["Criar conta / Fazer login"])
+        GOOGLELOGIN(["Entrar com Google"])
+        PAINEL(["Ver painel e agenda"])
+        CONCLUIR(["Confirmar ou concluir atendimento"])
+        SERVICOS(["Gerenciar serviços"])
+        NEGOCIO(["Editar perfil do negócio e expediente<br/>(banner, foto, WhatsApp)"])
     end
+
+    CLIENTE(("Cliente"))
+    PRESTADOR(("Prestador"))
+    USUARIO(("Usuário"))
+    GOOGLE(("Google"))
+
+    AGENDAR -."include".-> LOGIN
+    GOOGLELOGIN -."extend".-> LOGIN
+
+    CLIENTE --> BUSCAR & PERFIL & AGENDAR & CANCELAR & LEMBRETES & WHATSAPP & EXCLUIRCONTA
+    PRESTADOR --> PAINEL & CONCLUIR & SERVICOS & NEGOCIO
+    USUARIO --> TAREFAS & CALENDARIO & LOGIN
+    CLIENTE -.-> USUARIO
+    PRESTADOR -.-> USUARIO
+    GOOGLE --> GOOGLELOGIN
 ```
 
 ---
