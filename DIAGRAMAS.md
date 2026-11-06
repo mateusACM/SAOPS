@@ -219,27 +219,6 @@ sequenceDiagram
 
 ---
 
-## 6. Lembretes de agendamento
-
-```mermaid
-sequenceDiagram
-    actor U as Usuário
-    participant PF as perfil.html
-    participant LJ as lembretes.js
-    participant API as GET /agendamentos
-    U->>PF: ativa toggle (Notification.requestPermission)
-    PF->>PF: salva saops_lembretes=on + antecedência
-    loop a cada 60s, com aba aberta
-        LJ->>API: lista agendado/confirmado
-        alt falta ≤ antecedência e ainda não avisado
-            LJ->>U: Notification + toast (marca id em vistos)
-        end
-    end
-```
-
-> Push em 2º plano (aba fechada) é o próximo passo: Service Worker + Web Push + scheduler no servidor.
-
----
 
 ## 7. Status do agendamento
 
@@ -265,34 +244,5 @@ flowchart LR
     GH --> R["Render Blueprint render.yaml"]
     R --> B["build: npm install --prefix Backend"]
     B --> S["start: npm start --prefix Backend"]
-    S --> P["https://saops-zjyx.onrender.com"]
+    S --> P["https://saops.com.br"]
 ```
-
----
-
-## 9. Mapa das páginas
-
-```mermaid
-mindmap
-    root((SAOPS))
-        Cliente
-            Buscar prestadores
-            Agendar horário
-            Calendário
-            Cancelar e reagendar
-            Perfil e lembretes
-        Prestador
-            Agenda com filtros
-            Gerenciar serviços
-        Conta
-            Login cliente e empresa
-            Cadastro cliente e empresa
-            Login social Google
-        Organização
-            Tarefas com categorias
-            Sobre nós
-```
-
----
-
-*Gerado a partir do código em `Backend/` e `Frontend/` — se o código mudar, atualize os diagramas.*
