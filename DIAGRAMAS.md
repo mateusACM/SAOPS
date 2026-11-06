@@ -7,32 +7,31 @@ Arquitetura, banco de dados e fluxos do sistema em [Mermaid](https://mermaid.js.
 ## 1. Arquitetura
 
 ```mermaid
-flowchart LR
-    subgraph Navegador
-        P["19 páginas HTML"]
-        JS["js: api, ui, tema, lembretes, social, toast"]
-        SW["Service Worker - futuro: push em 2o plano"]
+flowchart TB
+    subgraph NAV["Navegador do usuário"]
+        PAG["20 páginas HTML5 + CSS3"]
+        JS["Scripts JavaScript<br/>api.js, ui.js, tema.js,<br/>lembretes.js, social.js, toast.js, cadastro.js"]
+        PAG --> JS
     end
-    subgraph "Node.js + Express (Render)"
-        R["Rotas amigaveis /:pagina + 404 real"]
-        API["API REST - agendamentos, tarefas, servicos"]
-        AUTH["/api/auth - sessao em cookie HttpOnly"]
-        LIM["Rate-limit no /api/auth"]
+
+    subgraph SRV["Servidor Node.js + Express 5 (Render)"]
+        MW["Middlewares: CORS, body-parser,<br/>rate-limit, exigirLogin"]
+        REST["API REST<br/>/agendamentos, /servicos,<br/>/api/tarefas, /api/prestadores"]
+        AUTH["/api/auth<br/>cadastro, login, sessão,<br/>OAuth Google + cookie saops_token"]
+        STATIC["Arquivos estáticos e URLs amigáveis"]
+        MW --> REST
+        MW --> AUTH
     end
-    subgraph Dados
-        DB[("PostgreSQL (Supabase)")]
-    end
-    subgraph IdPs
-        G["Google tokeninfo"]
-    end
-    P --> JS
-    JS --> API
-    JS --> AUTH
-    API --> DB
+
+    DB[("PostgreSQL (Supabase)")]
+    GOOGLE["Google"]
+    NAVEGADOR(("Usuário"))
+
+    NAVEGADOR -- "HTTP/JSON + cookie de sessão" --> SRV
+    REST --> DB
     AUTH --> DB
-    AUTH -. valida id_token .-> G
-    R --> P
-    LIM -. protege .-> AUTH
+    AUTH -. "valida id_token" .-> GOOGLE
+    STATIC -. "entrega as páginas" .-> NAVEGADOR
 ```
 
 ---
