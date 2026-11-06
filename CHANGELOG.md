@@ -11,9 +11,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Removido
 - **PWA / app instalável saiu do projeto**: removidos `Frontend/Paginas/manifest.webmanifest` e `Frontend/img/apple-touch-icon.png`, além das 2 linhas que os referenciavam em 18 páginas HTML (link do manifest e `apple-touch-icon`). O SAOPS é um **site web responsivo**, acessado pelo navegador, **sem instalação** — decisão do projeto: não é aplicativo. A responsividade e o layout para celular **permanecem** (nenhuma mudança visual)
 
-### Alterado
-- Documentação alinhada à remoção: `README.md`, `ARQUITETURA.md`, `AGENTS.md`, `.opencode/agents/eric.md`, `docs/TCC-REQUISITOS-DIAGRAMAS.md` (RF24 removido), `docs/TCC-COMPLEMENTO.md`, `docs/RESUMO-PROJETO-LEIGO.md` e `PRE-DOCUMENTACAO-TCC.md` deixaram de citar PWA/manifest (pendente de commit)
-
 ## [1.4.2] - 2026-10-26
 
 ### Adicionado
@@ -43,7 +40,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Adicionado
 - **Tela "Meu negócio"** (`/meu-negocio`, só prestador): perfil público (nome, categoria, endereço, apresentação, anos de experiência, Instagram), **horários de atendimento por dia** (expediente salvo em `disponibilidade`) e CRUD de serviços na mesma página — linkada no painel e na agenda
-- `PUT /api/auth/negocio` 🔒 (só `tipo=empresa`) + campos novos em `usuarios`: `bio`, `anos_experiencia`, `instagram`, `disponibilidade` (JSONB, padrão seg–sex 09:00–17:00, intervalo 30 min)
+- `PUT /api/auth/negocio`  (só `tipo=empresa`) + campos novos em `usuarios`: `bio`, `anos_experiencia`, `instagram`, `disponibilidade` (JSONB, padrão seg–sex 09:00–17:00, intervalo 30 min)
 - `GET /api/prestadores` público — vitrine de prestadores com perfil + serviços reais; a busca deixou o catálogo mock (`prestadores.js`)
 - **Validações de agendamento por prestador**: `prestador_id` obrigatório, serviço precisa pertencer ao prestador, dia ativo e horário dentro do expediente, conflito calculado pela **duração** do serviço (`409`)
 - Página `detalhes-prestador` (perfil público do prestador, `index, follow`) com botão "Compartilhar perfil" no Meu negócio
@@ -66,7 +63,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Adicionado
 - **Botão "Entrar" na página inicial** (vira "Meu perfil" quando já existe sessão)
 - **Painel do prestador** (`/painel-prestador`): cards de hoje / semana (seg–dom) / pendentes, contagem por status, lista do dia e ações rápidas — novo destino do login e do cadastro de empresa
-- `GET /agendamentos/meus` 🔒 — só os agendamentos da conta logada (`401` sem sessão) + `listarMeusAgendamentos()` no frontend
+- `GET /agendamentos/meus`  — só os agendamentos da conta logada (`401` sem sessão) + `listarMeusAgendamentos()` no frontend
 - Coluna `usuario_id` em `agendamentos` (schema + índice + backfill por nome): toda criação grava o dono do agendamento
 
 ### Alterado
@@ -420,7 +417,7 @@ Para dúvidas sobre mudanças específicas:
 
 **Versão Atual:** 1.4.3 
 
-**Status:** Estamos muitos fodidos
+**Status:**
 
 
 ## [Unreleased]
