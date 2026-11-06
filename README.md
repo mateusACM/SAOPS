@@ -2,7 +2,7 @@
 
 <img src="Frontend/img/logo-lockup.jpg" alt="SAOPS — Seu agendamento, mais simples" width="420">
 
-**Sua agenda, sem complicação.** Sistema de agendamento online gratuito para barbearias, salões, clínicas e outros prestadores.
+**Sua agenda, sem complicação.** Sistema de agendamento online gratuito para barbearias, salões, clínicas e outros prestadores
 
 [![Node.js](https://img.shields.io/badge/Node.js-24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com/)
