@@ -12,7 +12,7 @@
 [![Licença](https://img.shields.io/badge/Licen%C3%A7a-MIT-green)](LICENSE)
 [![PRs](https://img.shields.io/badge/PRs-bem--vindos-brightgreen)](https://github.com/nicolaskmazzini-coder/SAOPS-new/pulls)
 
-[🌐 Demonstração ao vivo](saops.com.br) · [📖 Diagramas](DIAGRAMAS.md) · [🐛 Issues](https://github.com/nicolaskmazzini-coder/SAOPS-new/issues)
+[🌐 Demonstração ao vivo](saops.com.br) · [📖 Diagramas](DIAGRAMAS.md) 
 
 </div>
 
@@ -102,7 +102,7 @@ SAOPS/
 
 ## 🔌 API
 
-Base: `https://saops-zjyx.onrender.com`
+Base: `saops.com.br`
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
@@ -134,7 +134,7 @@ curl https://saops-zjyx.onrender.com/api/status
 
 ---
 
-## 🚀 Rodando localmente
+##  Rodando localmente
 
 Pré-requisito: **Node.js 18+**.
 
